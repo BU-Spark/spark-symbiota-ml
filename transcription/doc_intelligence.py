@@ -23,8 +23,8 @@ def process_image(image_path: str):
     # Load Azure Cognitive Services (Document Intelligence) endpoint and key
     # Returns extracted text from processed image from Document Intelligence. 
 
-    endpoint = "https://cursive-handwritings.cognitiveservices.azure.com/"
-    
+    #endpoint = "https://cursive-handwritings.cognitiveservices.azure.com/"
+    endpoint = os.environ["AZURE_ENDPOINT"]
     key = os.environ["AZURE_DOCUMENT_KEY"]
     try:
         with open(image_path, "rb") as f:
