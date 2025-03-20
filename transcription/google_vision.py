@@ -9,7 +9,6 @@ import random
 from utils import image_utils
 
 # code adapted from spring 2024 ml team 
-
 openai.api_key = os.environ["OPENAI_API_KEY"] 
 
 # DOCUMENT AI DETAILS
@@ -17,36 +16,36 @@ project_id = os.environ["GOOGLE_PROJECT_ID"]
 processor_id = os.environ["GOOGLE_PROCESSOR_ID"]
 location = "us"
 
-
 # few shot examples 
 shots = \
 {
     "Chinese National Herbarium (PE) Plants of Xizang CHINA, Xizang, Lhoka City, Lhozhag County, Lhakang Town, Kharchhu Gompa vicinity 西藏自治区山南市洛扎县拉康镇卡久寺附近 28°5'37.15N, 91°7'24.74″E; 3934 m Herbs. Slopes near roadsides. PE-Xizang Expedition #PE6657 14 September 2017 M4 5 6 7 8 NCIL 中国数字植物标本馆 N° 2604988 西藏 TIBET 中国科学院 植物研究所 标本馆 PE CHINESE NATIONAL HERBARIUM (PE) 02334122 #PE6657 ASTERACEAE 菊科 Anaphalis contorta (D. Don) Hook. f. 鉴定人:张国进 Guo-Jin ZHANG 旋叶香青 17 May 2018"
-    :{"Collector":"Guo-Jin, Zhang",
-      "Location":"Xizang Autonomous Region, Shannan City, Lhozhag County, Lhakang Town, Kharchhu Gompa vincinity, Slopes near roadsides",
-      "Taxon":"Asteraceae; Anaphalis contorta (D. Don) Hook. f.",
-      "Date":"14 September 2017",
-      "Barcode":"2604988",
-      "Institution_code":"Chinese National Herbarium"
+    :{"recordedBy":"Guo-Jin, Zhang",
+      "location":"Xizang Autonomous Region, Shannan City, Lhozhag County, Lhakang Town, Kharchhu Gompa vincinity, Slopes near roadsides",
+      "scientificName":"Asteraceae; Anaphalis contorta (D. Don) Hook. f.",
+      "eventDate":"14 September 2017",
+      "barcode":"2604988",
+      "institutionCode":"Chinese National Herbarium"
     },
 
     "PE-Xizang Expedition #PE6673 9 NSIT Chinese National Herbarium (PE) Plants of Xizang CHINA, Xizang, Lhoka City, Lhozhag County, Lhakang Town, Kharchhu Gompa vicinity 28°5&#39;37.15&quot;N, 91°7&#39;24.74&quot;E; 3934 m Herbs. Slopes near roadsides. PE-Xizang Expedition #PE6673 9 NSIT Chinese National Herbarium (PE) Plants of Xizang CHINA, Xizang, Lhoka City, Lhozhag County, Lhakang Town, Kharchhu Gompa vicinity 28°5&#39;37.15&quot;N, 91°7&#39;24.74&quot;E; 3934 m Herbs. Slopes near roadsides. PE-Xizang Expedition #PE6673 9 NSIT Chinese National Herbarium (PE) Plants of Xizang Spiral Leaf Green 17 May 2018"
-    :{"Collector":"PE-Xizang Expedition #PE6673",
-      "Location":"Xizang Autonomous Region, Lhoka City, Lhozhag County, Lhakang Town, Kharchhu Gompa vicinity, Slopes near roadsides",
-      "Taxon":"Spiral Leaf Green",
-      "Date":"17 May 2018",
-      "Barcode":"UNKNOWN",
-      "Institution_code":"Chinese National Herbarium"
+    :{"recordedBy":"PE-Xizang Expedition #PE6673",
+      "location":"Xizang Autonomous Region, Lhoka City, Lhozhag County, Lhakang Town, Kharchhu Gompa vicinity, Slopes near roadsides",
+      "scientificName":"Spiral Leaf Green",
+      "eventDate":"17 May 2018",
+      "barcode":"UNKNOWN",
+      "institutionCode":"Chinese National Herbarium"
     },
 
-    "Honey Plants Research Institute of the Chinese Academy of Agricultural Sciences Collection No.: 13687. May 7, 1993 Habitat Roadside Altitude: 1600 * Characters Shrub No. Herbarium of the Institute of Botany, Chinese Academy of Sciences Collector 3687 Scientific Name Height: m (cm) Diameter at breast height m (cm) Flower: White Fruit: Notes Blooming period: from January to July Honey: Scientific Name: Rosa Sericea Lindl. Appendix: Collector: cm 1 2 3 4 25 CHINESE NATIONAL HERBARUM ( 01833954 No 1479566 * Herbarium of the Institute of Botany, Chinese Academy of Sciences Sichuan SZECHUAN DET. Rosa sercea Lindl. var. Various Zhi 2009-02-16"
-    :{"Collector":"UNKNOWN",
-      "Location":"Sichuan, China, Roadside, Altitude: 1600",
-      "Taxon":"Rosa sericea",
-      "Date":"7 May 1993",
-      "Barcode": "01833954",
-      "Institution_code": "Chinese Academy of Agricultural Sciences Collection"
+    "M.E. Naturalis Biodiversity Center Cimicifu SA EUROPAER ScHipcz. MEI 1975 4TT 3 AMD.115083 HUGO DE VRIES-LABORATORIU HORTUS BOTANICUS PLANTAGE MIDDENLAAN AMSTERDAM-C. 042566 RANLINELLACEAE Comicifuge foetida + Moravia: Frain. 18.711. 1888 A Obong. 22.85 2449 0.19 D50 Illuminant, 2 degree observer Density -0.04 0.09 0.15 0.22 0.36 0.51 Golden Thread 0.75 0.98 1.24 2.04 242 Colors by Munsell Color Services Lab"
+    :{"recordedBy": "Oborny A",
+      "location": "UNKNOWN",
+      "scientificName": "Cimicifuga europaea Schipcz.",
+      "eventDate": "11/18/1888",
+      "barcode": "AMD.115083",
+      "institutionCode": "Naturalis Biodiversity Center"
     },
+
 }
 
 # few-shot randomizer
@@ -71,17 +70,17 @@ def generate_metadata(input_text, shots):
     Input 1:
     {shot1_input}
     Output 1:
-    {{"Collector":"{shot1_output_collector}","Location":"{shot1_output_location}","Taxon":"{shot1_output_taxon}","Date":"{shot1_output_date}","Barcode":"{shot1_output_barcode}","Institution_code":"{shot1_output_code}"}}
+    {{"recordedBy":"{shot1_output_collector}","location":"{shot1_output_location}","scientificName":"{shot1_output_taxon}","eventDate":"{shot1_output_date}","barcode":"{shot1_output_barcode}","institutionCode":"{shot1_output_code}"}}
 
     Input 2:
     {shot2_input}
     Output 2:
-    {{"Collector":"{shot2_output_collector}","Location":"{shot2_output_location}","Taxon":"{shot2_output_taxon}","Date":"{shot2_output_date}","Barcode":"{shot2_output_barcode}","Institution_code":"{shot2_output_code}"}}
+    {{"recordedBy":"{shot2_output_collector}","location":"{shot2_output_location}","scientificName":"{shot2_output_taxon}","eventDate":"{shot2_output_date}","barcode":"{shot2_output_barcode}","institutionCode":"{shot2_output_code}"}}
 
     Input 3:
     {shot3_input}
     Output 3:
-    {{"Collector":"{shot3_output_collector}","Location":"{shot3_output_location}","Taxon":"{shot3_output_taxon}","Date":"{shot3_output_date}","Barcode":"{shot3_output_barcode}","Institution_code":"{shot3_output_code}"}}
+    {{"recordedBy":"{shot3_output_collector}","location":"{shot3_output_location}","scientificName":"{shot3_output_taxon}","eventDate":"{shot3_output_date}","barcode":"{shot3_output_barcode}","institutionCode":"{shot3_output_code}"}}
 
     Your attempt:
     Input:
@@ -90,28 +89,28 @@ def generate_metadata(input_text, shots):
 
     """.format(
     shot1_input = random_pairs[0][0],
-    shot1_output_collector = random_pairs[0][1]['Collector'],
-    shot1_output_location = random_pairs[0][1]['Location'],
-    shot1_output_taxon = random_pairs[0][1]['Taxon'],
-    shot1_output_date = random_pairs[0][1]['Date'],
-    shot1_output_barcode = random_pairs[0][1]['Barcode'],
-    shot1_output_code = random_pairs[0][1]['Institution_code'],
+    shot1_output_collector = random_pairs[0][1]['recordedBy'],
+    shot1_output_location = random_pairs[0][1]['location'],
+    shot1_output_taxon = random_pairs[0][1]['scientificName'],
+    shot1_output_date = random_pairs[0][1]['eventDate'],
+    shot1_output_barcode = random_pairs[0][1]['barcode'],
+    shot1_output_code = random_pairs[0][1]['institutionCode'],
 
     shot2_input = random_pairs[1][0],
-    shot2_output_collector = random_pairs[1][1]['Collector'],
-    shot2_output_location = random_pairs[1][1]['Location'],
-    shot2_output_taxon = random_pairs[1][1]['Taxon'],
-    shot2_output_date = random_pairs[1][1]['Date'],
-    shot2_output_barcode = random_pairs[1][1]['Barcode'],
-    shot2_output_code = random_pairs[1][1]['Institution_code'],
+    shot2_output_collector = random_pairs[1][1]['recordedBy'],
+    shot2_output_location = random_pairs[1][1]['location'],
+    shot2_output_taxon = random_pairs[1][1]['scientificName'],
+    shot2_output_date = random_pairs[1][1]['eventDate'],
+    shot2_output_barcode = random_pairs[1][1]['barcode'],
+    shot2_output_code = random_pairs[1][1]['institutionCode'],
 
     shot3_input = random_pairs[2][0],
-    shot3_output_collector = random_pairs[2][1]['Collector'],
-    shot3_output_location = random_pairs[2][1]['Location'],
-    shot3_output_taxon = random_pairs[2][1]['Taxon'],
-    shot3_output_date = random_pairs[2][1]['Date'],
-    shot3_output_barcode = random_pairs[2][1]['Barcode'],
-    shot3_output_code = random_pairs[2][1]['Institution_code'],
+    shot3_output_collector = random_pairs[2][1]['recordedBy'],
+    shot3_output_location = random_pairs[2][1]['location'],
+    shot3_output_taxon = random_pairs[2][1]['scientificName'],
+    shot3_output_date = random_pairs[2][1]['eventDate'],
+    shot3_output_barcode = random_pairs[2][1]['barcode'],
+    shot3_output_code = random_pairs[2][1]['institutionCode'],
 
     input_text = input_text
     )
@@ -172,6 +171,6 @@ def run_google_vision_pipeline(image_path: str):
             return f"An error occurred: {str(e)} on file {image_path}"
 
 if __name__ == "__main__":
-    input_image_path = "data/raw-images/3734813368.jpg" # test image
+    input_image_path = "data/raw-images/1927995752.jpg" # test image
     print(run_google_vision_pipeline(input_image_path))
     
