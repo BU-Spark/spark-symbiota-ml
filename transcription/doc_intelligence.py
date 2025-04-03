@@ -7,6 +7,10 @@ import typing
 import pandas as pd
 import json
 
+import sys
+from dotenv import load_dotenv
+load_dotenv()
+
 # document intelligence code from fall 2023 team 
 
 example_result = \
@@ -34,7 +38,7 @@ def process_image(image_path: str):
 
         poller = document_analysis_client.begin_analyze_document("prebuilt-read", image_stream)
         result = poller.result()
-
+        
         return result      
 
     except Exception as e:
@@ -103,5 +107,9 @@ def run_doc_intell_pipeline(image_path: str):
             return f"An error occurred while processing {image_path}: {e}"
 
 if __name__ == "__main__":
-    input_img_path = "data/raw-images/437640137.jpg" # test image
+    if len(sys.argv) != 2:
+        print("Usage: python script_name.py <image_path>")
+        sys.exit(1)
+
+    input_img_path = sys.argv[1]
     print(run_doc_intell_pipeline(input_img_path))
