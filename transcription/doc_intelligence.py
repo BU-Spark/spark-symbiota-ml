@@ -7,9 +7,11 @@ import typing
 import pandas as pd
 import json
 
-import sys
+# .env file should be in the directory 'transcription'
+from pathlib import Path
 from dotenv import load_dotenv
-load_dotenv()
+env_path = Path(__file__).parent / ".env"
+load_dotenv(dotenv_path=env_path)
 
 # document intelligence code from fall 2023 team 
 
@@ -107,9 +109,5 @@ def run_doc_intell_pipeline(image_path: str):
             return f"An error occurred while processing {image_path}: {e}"
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python script_name.py <image_path>")
-        sys.exit(1)
-
-    input_img_path = sys.argv[1]
+    input_img_path = "data/raw-images/437640137.jpg" # test image
     print(run_doc_intell_pipeline(input_img_path))
