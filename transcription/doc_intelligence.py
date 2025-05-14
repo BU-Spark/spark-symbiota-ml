@@ -7,6 +7,12 @@ import typing
 import pandas as pd
 import json
 
+# .env file should be in the directory 'transcription'
+from pathlib import Path
+from dotenv import load_dotenv
+env_path = Path(__file__).parent / ".env"
+load_dotenv(dotenv_path=env_path)
+
 # document intelligence code from fall 2023 team 
 
 example_result = \
@@ -34,7 +40,7 @@ def process_image(image_path: str):
 
         poller = document_analysis_client.begin_analyze_document("prebuilt-read", image_stream)
         result = poller.result()
-
+        
         return result      
 
     except Exception as e:
