@@ -6,6 +6,7 @@ import os
 import typing
 import pandas as pd
 import json
+from dotenv import load_dotenv
 
 # .env file should be in the directory 'transcription'
 from pathlib import Path
