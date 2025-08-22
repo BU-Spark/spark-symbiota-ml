@@ -3,11 +3,13 @@
 ## Overview
 - `/data/gt-labels` - contains ground truth `.txt` files (collector, taxon, location) for sample images, organized by occurrence id. 
 - `/data/raw-images` - contains sample images from GBIF  to  test with 
+- `/results` - contains results from the different pipelines (tesseract, microsoft[TO DO], google[TO DO])
 - `/utils/image_utils.py` - script for resizing images to be processed by vision tools
 
 This repository contains two Python scripts for document intelligence tasks:
 1. `doc_intelligence.py` - Uses Azure Document Intelligence and gpt4o to extract text from herbarium specimens. 
 2. `google_vision.py` - Uses Google Document AI and gpt4o to extract text from herbarium specimens. 
+3. `tesseract_pipeline.py` - Uses Tesseract to extract text text from herbarium specimens (baseline).
    
 ## Dependencies
 Ensure that the reuired API credentials are set up before running the scripts. 
