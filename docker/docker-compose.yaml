@@ -1,14 +1,14 @@
-version: '3.8'
-
 services:
   ocr_service:
     build:
       context: ..
       dockerfile: docker/Dockerfile
     ports:
-      - "8080:8080"
+      - "8081:8080"
     networks:
       - symbiota-network
+    env_file:
+      - ../transcription/.env
 
 networks:
   symbiota-network:
