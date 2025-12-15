@@ -68,7 +68,6 @@ def extract_info(text: str, example_result: str, example_output: str):
     # Set your OpenAI API key
     openai.api_key = os.environ["OPENAI_API_KEY"]
 
-
     prompt = f"Your goal is to translate (if necessary) and then extract six items from a string of text: the name of the specimen collector, the location the specimen was collected, the taxon name (genus and species, minimally) and/or any identifying information about the specimen, the date the specimen was collected, the barcode associated with the specimen, and the collection/institution code. Your response should contain only the output in string format. For the taxon name, only output recognized species within the identified genus. Use the best information available or insert 'UNKNOWN' if there is none. Here is an example input \n{example_result} and example output \n{example_output}. Here is your attempt: \n{text}"
 
     try:
@@ -76,7 +75,7 @@ def extract_info(text: str, example_result: str, example_output: str):
         client = openai.OpenAI() 
 
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4o-mini", # gpt-4o-mini
             messages=[{"role": "system", "content": "You are a helpful assistant"},
                       {"role": "user", "content":prompt}],
             temperature=0.1 # default temperature = 1

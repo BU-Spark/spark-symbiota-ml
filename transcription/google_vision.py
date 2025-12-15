@@ -5,8 +5,14 @@ import os
 import json
 import openai
 import random
+import pandas as pd
 
 from utils import image_utils
+from pathlib import Path
+from dotenv import load_dotenv
+
+env_path = Path(__file__).parent / ".env"
+load_dotenv(dotenv_path=env_path)
 
 # code adapted from spring 2024 ml team 
 openai.api_key = os.environ["OPENAI_API_KEY"] 
@@ -146,7 +152,7 @@ def batch_process_documents(file_path: str, file_mime_type: str) -> tuple:
 
     name = client.processor_path(project_id, location, processor_id)
     request = documentai.ProcessRequest(name=name, raw_document=raw_document)
-    result = client.process_document(request=request)
+    result = client.process_document(request=request, timeout=60)
 
     extracted_text = result.document.text.replace('\n', ' ')
     return extracted_text
@@ -155,7 +161,7 @@ def run_google_vision_pipeline(image_path: str):
     if image_path.lower().endswith((".png", ".jpg", ".jpeg")):
         # check image resolution 
         # document ai has a restriction on image resolution to 40 megapixels per page
-        image_utils.resize_image(image_path)
+        #image_utils.resize_image(image_path)
 
         try:
             # document ai processing 
@@ -171,6 +177,5 @@ def run_google_vision_pipeline(image_path: str):
             return f"An error occurred: {str(e)} on file {image_path}"
 
 if __name__ == "__main__":
-    input_image_path = "data/raw-images/1927995752.jpg" # test image
+    input_image_path = "data/raw-images/437804966.jpg" # test image
     print(run_google_vision_pipeline(input_image_path))
-    
