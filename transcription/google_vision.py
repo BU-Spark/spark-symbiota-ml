@@ -18,8 +18,11 @@ load_dotenv(dotenv_path=env_path)
 openai.api_key = os.environ["OPENAI_API_KEY"] 
 
 # DOCUMENT AI DETAILS
-project_id = os.environ["GOOGLE_PROJECT_ID"]
-processor_id = os.environ["GOOGLE_PROCESSOR_ID"]
+#project_id = os.environ["GOOGLE_PROJECT_ID"]
+#processor_id = os.environ["GOOGLE_PROCESSOR_ID"]
+
+project_id = "ml-harvard-herbaria"
+processor_id = "3dad01876d9fcc14"
 location = "us"
 
 # few shot examples 
@@ -29,7 +32,7 @@ shots = \
     :{"recordedBy":"Guo-Jin, Zhang",
       "location":"Xizang Autonomous Region, Shannan City, Lhozhag County, Lhakang Town, Kharchhu Gompa vincinity, Slopes near roadsides",
       "scientificName":"Asteraceae; Anaphalis contorta (D. Don) Hook. f.",
-      "eventDate":"14 September 2017",
+      "eventDate":"2017-09-14", 
       "barcode":"2604988",
       "institutionCode":"Chinese National Herbarium"
     },
@@ -38,7 +41,7 @@ shots = \
     :{"recordedBy":"PE-Xizang Expedition #PE6673",
       "location":"Xizang Autonomous Region, Lhoka City, Lhozhag County, Lhakang Town, Kharchhu Gompa vicinity, Slopes near roadsides",
       "scientificName":"Spiral Leaf Green",
-      "eventDate":"17 May 2018",
+      "eventDate":"2018-05-17", 
       "barcode":"UNKNOWN",
       "institutionCode":"Chinese National Herbarium"
     },
@@ -47,7 +50,7 @@ shots = \
     :{"recordedBy": "Oborny A",
       "location": "UNKNOWN",
       "scientificName": "Cimicifuga europaea Schipcz.",
-      "eventDate": "11/18/1888",
+      "eventDate": "1888", 
       "barcode": "AMD.115083",
       "institutionCode": "Naturalis Biodiversity Center"
     },

@@ -22,7 +22,7 @@ example_result = \
 example_output = {"recordedBy": "C. N. Forbes",
                   "location": "Oahu",
                   "scientificName": "Clermontia persicifolia Gaud.",
-                  "eventDate": "Apr 26 - May 16, 1912",
+                  "eventDate": "1912-05-16", # Apr 26 - May 16, 1912
                   "barcode": "00427028",
                   "institutionCode": "Smithsonian Institution"}
 
@@ -109,5 +109,5 @@ def run_doc_intell_pipeline(image_path: str):
             return f"An error occurred while processing {image_path}: {e}"
 
 if __name__ == "__main__":
-    input_img_path = "data/raw-images/437640137.jpg" # test image
+    input_img_path = "data/raw-images/437659994.jpg" # test image
     print(run_doc_intell_pipeline(input_img_path))
