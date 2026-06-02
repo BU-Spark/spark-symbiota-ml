@@ -18,12 +18,8 @@ load_dotenv(dotenv_path=env_path)
 openai.api_key = os.environ["OPENAI_API_KEY"] 
 
 # DOCUMENT AI DETAILS
-#project_id = os.environ["GOOGLE_PROJECT_ID"]
-#processor_id = os.environ["GOOGLE_PROCESSOR_ID"]
-
-project_id = "ml-harvard-herbaria"
-processor_id = "3dad01876d9fcc14"
-location = "us"
+project_id = os.environ["GOOGLE_PROJECT_ID"]
+processor_id = os.environ["GOOGLE_PROCESSOR_ID"]
 
 # few shot examples 
 shots = \
