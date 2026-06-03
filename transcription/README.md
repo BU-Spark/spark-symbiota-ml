@@ -3,7 +3,7 @@
 ## Overview
 - `/data/gt-labels` - contains ground truth `.txt` files (collector, taxon, location) for sample images, organized by occurrence id. 
 - `/data/raw-images` - contains sample images from GBIF  to  test with 
-- `/results` - contains results from the different pipelines (tesseract, microsoft[TO DO], google[TO DO])
+- `/results` - contains results from the different pipelines (tesseract, microsoft, google)
 - `/utils/image_utils.py` - script for resizing images to be processed by vision tools
 
 This repository contains two Python scripts for document intelligence tasks:
