@@ -14,12 +14,19 @@ from dotenv import load_dotenv
 env_path = Path(__file__).parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
+# Works both as a script (cwd=transcription) and as a package import
+try:
+    from transcription.confidence import build_confidence, include_llm_enabled
+except ImportError:
+    from confidence import build_confidence, include_llm_enabled
+
 # code adapted from spring 2024 ml team 
 openai.api_key = os.environ["OPENAI_API_KEY"] 
 
 # DOCUMENT AI DETAILS
 project_id = os.environ["GOOGLE_PROJECT_ID"]
 processor_id = os.environ["GOOGLE_PROCESSOR_ID"]
+location = os.environ.get("GOOGLE_LOCATION", "us")
 
 # few shot examples 
 shots = \
@@ -68,7 +75,9 @@ def generate_metadata(input_text, shots):
     # PROMPT FORMATTING
     prompt = \
     """
-    Your goal is to translate (if necessary) and then extract six items from a string of text: the name of the specimen collector, the location the specimen was collected, the taxon name (genus and species, minimally) and/or any identifying information about the specimen, the date the specimen was collected, the barcode associated with the specimen, and the collection/institution code. . Your response should contain only the output in string format. For the taxon name, only output recognized species within the identified genus. Use the best information available or insert 'UNKNOWN' if there is none.
+    Your goal is to translate (if necessary) and then extract six items from a string of text: the name of the specimen collector, the location the specimen was collected, the taxon name (genus and species, minimally) and/or any identifying information about the specimen, the date the specimen was collected, the barcode associated with the specimen, and the collection/institution code. For the taxon name, only output recognized species within the identified genus. Use the best information available or insert 'UNKNOWN' if there is none.
+
+    Return ONLY a valid JSON object (no markdown, no commentary) with the six fields plus a 'confidence' object giving your confidence from 0 to 1 that each field is correct, e.g. {{"recordedBy": ..., "location": ..., "scientificName": ..., "eventDate": ..., "barcode": ..., "institutionCode": ..., "confidence": {{"recordedBy": 0.0, "location": 0.0, "scientificName": 0.0, "eventDate": 0.0, "barcode": 0.0, "institutionCode": 0.0}}}}
 
     Examples:
 
@@ -128,7 +137,8 @@ def generate_metadata(input_text, shots):
             model="gpt-4o-mini",
             messages=[{"role": "system", "content": "You are a helpful assistant"},
                       {"role": "user", "content":prompt}],
-            temperature=0.1 # default temperature = 1
+            temperature=0.1, # default temperature = 1
+            response_format={"type": "json_object"} # enforce valid JSON output
         )
 
         # Extract the response
@@ -140,6 +150,14 @@ def generate_metadata(input_text, shots):
     except Exception as e:
         return f"An error occurred: {str(e)}"
     
+
+# resolve the text of a layout element from its text_anchor offsets
+def _layout_text(layout, full_text: str) -> str:
+    segments = layout.text_anchor.text_segments
+    return "".join(
+        full_text[int(seg.start_index):int(seg.end_index)] for seg in segments
+    )
+
 
 # main document AI processor
 def batch_process_documents(file_path: str, file_mime_type: str) -> tuple:
@@ -153,8 +171,18 @@ def batch_process_documents(file_path: str, file_mime_type: str) -> tuple:
     request = documentai.ProcessRequest(name=name, raw_document=raw_document)
     result = client.process_document(request=request, timeout=60)
 
-    extracted_text = result.document.text.replace('\n', ' ')
-    return extracted_text
+    document = result.document
+    extracted_text = document.text.replace('\n', ' ')
+
+    # Capture per-token confidence (previously discarded) for the confidence helper.
+    words = []
+    for page in document.pages:
+        for token in page.tokens:
+            content = _layout_text(token.layout, document.text).strip()
+            if content:
+                words.append({"content": content, "confidence": token.layout.confidence})
+
+    return extracted_text, words
 
 def run_google_vision_pipeline(image_path: str):
     if image_path.lower().endswith((".png", ".jpg", ".jpeg")):
@@ -163,13 +191,18 @@ def run_google_vision_pipeline(image_path: str):
         #image_utils.resize_image(image_path)
 
         try:
-            # document ai processing 
-            extracted_text = batch_process_documents(image_path, "image/jpeg")
+            # document ai processing
+            extracted_text, words = batch_process_documents(image_path, "image/jpeg")
             processed_text = generate_metadata(extracted_text, shots)
 
-            # build result 
-            result = eval(processed_text)
+            # build result (json.loads is safer than eval)
+            result = json.loads(processed_text)
+
+            # combine the LLM's per-field self-rating with OCR-derived confidence
+            llm_scores = result.pop("confidence", {})
             result["image_path"] = image_path
+            result["confidence"] = build_confidence(
+                result, words, llm_scores, include_llm=include_llm_enabled())
             return json.dumps(result)
 
         except Exception as e:

@@ -14,6 +14,12 @@ from dotenv import load_dotenv
 env_path = Path(__file__).parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
+# Works both as a script (cwd=transcription) and as a package import (from backend)
+try:
+    from transcription.confidence import build_confidence, include_llm_enabled
+except ImportError:
+    from confidence import build_confidence, include_llm_enabled
+
 # document intelligence code from fall 2023 team 
 
 example_result = \
@@ -56,7 +62,8 @@ def get_image_words(result: str) -> typing.Tuple[list, str]:
     for page in result.pages:
         for word in page.words:
             words.append({'content': word.content,
-                          'polygon': word.polygon
+                          'polygon': word.polygon,
+                          'confidence': word.confidence
             })
             confidence_text += "'{}' confidence {}\n".format(word.content, word.confidence)
     return words, confidence_text
@@ -68,7 +75,7 @@ def extract_info(text: str, example_result: str, example_output: str):
     # Set your OpenAI API key
     openai.api_key = os.environ["OPENAI_API_KEY"]
 
-    prompt = f"Your goal is to translate (if necessary) and then extract six items from a string of text: the name of the specimen collector, the location the specimen was collected, the taxon name (genus and species, minimally) and/or any identifying information about the specimen, the date the specimen was collected, the barcode associated with the specimen, and the collection/institution code. Your response should contain only the output in string format. For the taxon name, only output recognized species within the identified genus. Use the best information available or insert 'UNKNOWN' if there is none. Here is an example input \n{example_result} and example output \n{example_output}. Here is your attempt: \n{text}"
+    prompt = f"Your goal is to translate (if necessary) and then extract six items from a string of text: the name of the specimen collector, the location the specimen was collected, the taxon name (genus and species, minimally) and/or any identifying information about the specimen, the date the specimen was collected, the barcode associated with the specimen, and the collection/institution code. For the taxon name, only output recognized species within the identified genus. Use the best information available or insert 'UNKNOWN' if there is none. Here is an example input \n{example_result} and example output \n{example_output}.\n\nReturn ONLY a valid JSON object (no markdown, no commentary) with the six fields plus a 'confidence' object giving your confidence from 0 to 1 that each field is correct. Format:\n{{\"recordedBy\": ..., \"location\": ..., \"scientificName\": ..., \"eventDate\": ..., \"barcode\": ..., \"institutionCode\": ..., \"confidence\": {{\"recordedBy\": 0.0, \"location\": 0.0, \"scientificName\": 0.0, \"eventDate\": 0.0, \"barcode\": 0.0, \"institutionCode\": 0.0}}}}\n\nHere is your attempt: \n{text}"
 
     try:
         # Send the request to the API
@@ -78,7 +85,8 @@ def extract_info(text: str, example_result: str, example_output: str):
             model="gpt-4o-mini", # gpt-4o-mini
             messages=[{"role": "system", "content": "You are a helpful assistant"},
                       {"role": "user", "content":prompt}],
-            temperature=0.1 # default temperature = 1
+            temperature=0.1, # default temperature = 1
+            response_format={"type": "json_object"} # enforce valid JSON output
         )
 
         # Extract the response
@@ -95,14 +103,20 @@ def run_doc_intell_pipeline(image_path: str):
     if image_path.lower().endswith((".png", ".jpg", ".jpeg")):
         # Processing an image
         image_result = process_image(image_path)
-        _, confidence_text = get_image_words(image_result)
-        document_content = image_result.content + "\n\nConfidence Metrics:\n" + confidence_text 
+        words, confidence_text = get_image_words(image_result)
+        document_content = image_result.content + "\n\nConfidence Metrics:\n" + confidence_text
         extracted_info = extract_info(document_content, example_result, example_output)
 
         try:
-            # Formatting results
-            data = eval(extracted_info) 
-            data["image_path"] = image_path  
+            # Parse the LLM's JSON output (json.loads is safer than eval)
+            data = json.loads(extracted_info)
+
+            # Pull out the LLM's per-field self-rating and combine it with the
+            # OCR-derived confidence to build the per-field {ocr, llm} object.
+            llm_scores = data.pop("confidence", {})
+            data["image_path"] = image_path
+            data["confidence"] = build_confidence(
+                data, words, llm_scores, include_llm=include_llm_enabled())
 
             return json.dumps(data)
         except Exception as e:
