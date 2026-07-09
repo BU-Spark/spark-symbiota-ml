@@ -16,9 +16,9 @@ load_dotenv(dotenv_path=env_path)
 
 # Works both as a script (cwd=transcription) and as a package import (from backend)
 try:
-    from transcription.confidence import build_confidence, include_llm_enabled
+    from transcription.confidence import build_confidence, detail_enabled
 except ImportError:
-    from confidence import build_confidence, include_llm_enabled
+    from confidence import build_confidence, detail_enabled
 
 # document intelligence code from fall 2023 team 
 
@@ -111,12 +111,11 @@ def run_doc_intell_pipeline(image_path: str):
             # Parse the LLM's JSON output (json.loads is safer than eval)
             data = json.loads(extracted_info)
 
-            # Pull out the LLM's per-field self-rating and combine it with the
-            # OCR-derived confidence to build the per-field {ocr, llm} object.
-            llm_scores = data.pop("confidence", {})
+            # Discard the LLM's subjective self-rating; confidence is derived
+            # purely from the OCR words (coverage / grounding).
+            data.pop("confidence", None)
             data["image_path"] = image_path
-            data["confidence"] = build_confidence(
-                data, words, llm_scores, include_llm=include_llm_enabled())
+            data["confidence"] = build_confidence(data, words, detail=detail_enabled())
 
             return json.dumps(data)
         except Exception as e:

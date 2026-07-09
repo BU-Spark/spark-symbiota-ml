@@ -16,9 +16,9 @@ load_dotenv(dotenv_path=env_path)
 
 # Works both as a script (cwd=transcription) and as a package import
 try:
-    from transcription.confidence import build_confidence, include_llm_enabled
+    from transcription.confidence import build_confidence, detail_enabled
 except ImportError:
-    from confidence import build_confidence, include_llm_enabled
+    from confidence import build_confidence, detail_enabled
 
 # code adapted from spring 2024 ml team 
 openai.api_key = os.environ["OPENAI_API_KEY"] 
@@ -198,11 +198,11 @@ def run_google_vision_pipeline(image_path: str):
             # build result (json.loads is safer than eval)
             result = json.loads(processed_text)
 
-            # combine the LLM's per-field self-rating with OCR-derived confidence
-            llm_scores = result.pop("confidence", {})
+            # Discard the LLM's subjective self-rating; confidence is derived
+            # purely from the OCR words (coverage / grounding).
+            result.pop("confidence", None)
             result["image_path"] = image_path
-            result["confidence"] = build_confidence(
-                result, words, llm_scores, include_llm=include_llm_enabled())
+            result["confidence"] = build_confidence(result, words, detail=detail_enabled())
             return json.dumps(result)
 
         except Exception as e:

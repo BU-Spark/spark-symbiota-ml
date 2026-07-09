@@ -1,8 +1,10 @@
+import json
 import requests
 from PIL import Image
 import os
 from fastapi import FastAPI, HTTPException, Query
 from transcription.doc_intelligence import run_doc_intell_pipeline
+from transcription.envelope import to_middleware_envelope
 
 app = FastAPI()
 
@@ -45,4 +47,9 @@ async def evaluate(url: str = Query(...)):
     # Clean up by deleting the temporary file
     os.remove(temp_filename)
 
-    return azure_result
+    # Reshape into the middleware's flat DWC + _confidence envelope.
+    try:
+        data = json.loads(azure_result)
+    except (json.JSONDecodeError, TypeError):
+        raise HTTPException(status_code=502, detail=f"OCR pipeline error: {str(azure_result)[:200]}")
+    return to_middleware_envelope(data, model="azure")
