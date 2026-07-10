@@ -184,3 +184,4 @@ memory/
 transcription/results/ocr_cache/
 # Dev eval outputs (the canonical confidence_eval.csv is kept)
 transcription/results/confidence_eval_*.csv
+docs/confidence-summary.md

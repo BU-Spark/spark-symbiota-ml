@@ -1,0 +1,33 @@
+# Secrets: injected at runtime via compose `env_file`, never baked into a layer.
+# Patterns are anchored at the context root, so `**/` is required to catch
+# transcription/.env -- a bare `.env` silently matches only the root file.
+**/.env
+**/*.env
+!**/.env.example
+
+# Virtualenvs and VCS metadata
+.venv/
+venv/
+.git/
+.gitignore
+
+# Python caches
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Sample imagery, eval outputs, notebooks, docs: not needed to serve the API
+transcription/data/
+transcription/results/
+nbs/
+docs/
+memory/
+
+# Build/editor cruft
+docker/
+Dockerfile*
+*.md
+.vscode/
+.idea/
