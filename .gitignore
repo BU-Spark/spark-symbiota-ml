@@ -185,3 +185,14 @@ transcription/results/ocr_cache/
 # Dev eval outputs (the canonical confidence_eval.csv is kept)
 transcription/results/confidence_eval_*.csv
 docs/confidence-summary.md
+# Eval/experiment scripts (kept locally for dev, not committed)
+nbs/
+# Eval image set + ground truth (large)
+transcription/data/gbif-ne-500/
+# Confidence-signal caches (regenerable from GBIF / vision / self-consistency)
+transcription/results/vision_cache/
+transcription/results/self_consistency_cache/
+transcription/results/gbif_taxon_full.json
+transcription/results/gbif_taxon_match.json
+transcription/results/gbif_admin_location.json
+transcription/results/gbif_region_count.json

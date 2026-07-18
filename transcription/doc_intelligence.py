@@ -16,9 +16,9 @@ load_dotenv(dotenv_path=env_path)
 
 # Works both as a script (cwd=transcription) and as a package import (from backend)
 try:
-    from transcription.confidence import build_confidence, detail_enabled
+    from transcription.confidence import build_confidence, detail_enabled, GbifTaxonMatcher, _tokenize
 except ImportError:
-    from confidence import build_confidence, detail_enabled
+    from confidence import build_confidence, detail_enabled, GbifTaxonMatcher, _tokenize
 
 # document intelligence code from fall 2023 team 
 
@@ -68,9 +68,11 @@ def get_image_words(result: str) -> typing.Tuple[list, str]:
             confidence_text += "'{}' confidence {}\n".format(word.content, word.confidence)
     return words, confidence_text
 
-def extract_info(text: str, example_result: str, example_output: str):
-    # Given text output from Document Intelligence, extract relevant information from text using LLM. 
-    # Returns response from GPT. 
+def extract_info(text: str, example_result: str, example_output: str, temperature: float = 0.1):
+    # Given text output from Document Intelligence, extract relevant information from text using LLM.
+    # Returns response from GPT.
+    # temperature: sampling temperature; raise it (e.g. 0.8) to draw diverse
+    # samples for LLM self-consistency confidence, default 0.1 for production.
 
     # Set your OpenAI API key
     openai.api_key = os.environ["OPENAI_API_KEY"]
@@ -85,7 +87,7 @@ def extract_info(text: str, example_result: str, example_output: str):
             model="gpt-4o-mini", # gpt-4o-mini
             messages=[{"role": "system", "content": "You are a helpful assistant"},
                       {"role": "user", "content":prompt}],
-            temperature=0.1, # default temperature = 1
+            temperature=temperature, # default 0.1 for production; raise for self-consistency sampling
             response_format={"type": "json_object"} # enforce valid JSON output
         )
 
@@ -97,6 +99,81 @@ def extract_info(text: str, example_result: str, example_output: str):
 
     except Exception as e:
         return f"An error occurred: {str(e)}"
+
+# Vision confidence signal: an independent read of the six fields straight from
+# the image (used for the eventDate + recordedBy ensembles). Behind a flag
+# because it costs an extra gpt-4o-mini vision call per specimen.
+VISION_PROMPT = (
+    "You are reading a herbarium specimen sheet. From the image, extract exactly "
+    "these six fields and return ONLY a JSON object (no markdown): recordedBy "
+    "(collector), location, scientificName (genus species), eventDate (ISO), "
+    "barcode (catalog number), institutionCode. Use 'UNKNOWN' if not legible."
+)
+
+_TAXON_MATCHER = None
+
+
+def _taxon_matcher():
+    # Lazily-built, cached GBIF backbone matcher for the scientificName signal.
+    global _TAXON_MATCHER
+    if _TAXON_MATCHER is None:
+        _TAXON_MATCHER = GbifTaxonMatcher()
+    return _TAXON_MATCHER
+
+
+def _binomial(name: str) -> str:
+    # genus + species pair (first two significant tokens), used to compare a text
+    # read against a vision read for the P3 tiebreak. Matches the policy eval.
+    return " ".join([t for t in _tokenize(name) if len(t) >= 3][:2])
+
+
+def _enhanced_enabled() -> bool:
+    # Gate the paid confidence signals (self-consistency + vision). When off,
+    # eventDate falls back to date validity and recordedBy to the collector
+    # gazetteer alone; the free signals (location, barcode, scientificName) are
+    # unaffected.
+    return os.environ.get("CONFIDENCE_ENHANCED", "").lower() in ("1", "true", "yes")
+
+
+def _self_consistency_samples(document_content: str, k: int = 3):
+    # K re-extractions at temp 0.8; their agreement is the eventDate signal.
+    out = []
+    for _ in range(k):
+        raw = extract_info(document_content, example_result, example_output, temperature=0.8)
+        try:
+            out.append(json.loads(raw))
+        except (json.JSONDecodeError, TypeError):
+            pass
+    return out or None
+
+
+def vision_extract_fields(image_path: str):
+    # Independent vision read of the six fields (no OCR text). Returns None on any
+    # failure so confidence scoring degrades gracefully.
+    try:
+        import base64
+        import io
+        from PIL import Image
+        im = Image.open(image_path).convert("RGB")
+        im.thumbnail((1536, 1536), Image.LANCZOS)
+        buf = io.BytesIO()
+        im.save(buf, "JPEG", quality=85)
+        b64 = base64.b64encode(buf.getvalue()).decode()
+        client = openai.OpenAI()
+        resp = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": [
+                {"type": "text", "text": VISION_PROMPT},
+                {"type": "image_url",
+                 "image_url": {"url": f"data:image/jpeg;base64,{b64}", "detail": "high"}},
+            ]}],
+            temperature=0.1,
+            response_format={"type": "json_object"},
+        )
+        return json.loads(resp.choices[0].message.content)
+    except Exception:
+        return None
+
 
 def run_doc_intell_pipeline(image_path: str):
     # Check if the file is an image 
@@ -111,11 +188,55 @@ def run_doc_intell_pipeline(image_path: str):
             # Parse the LLM's JSON output (json.loads is safer than eval)
             data = json.loads(extracted_info)
 
-            # Discard the LLM's subjective self-rating; confidence is derived
-            # purely from the OCR words (coverage / grounding).
+            # Discard the LLM's subjective self-rating; confidence is derived from
+            # reference checks (gazetteer / taxonomic backbone) and, when enabled,
+            # an independent self-consistency + vision read.
             data.pop("confidence", None)
             data["image_path"] = image_path
-            data["confidence"] = build_confidence(data, words, detail=detail_enabled())
+
+            sc_samples = vision_fields = None
+            if _enhanced_enabled():
+                sc_samples = _self_consistency_samples(document_content, k=3)
+                vision_fields = vision_extract_fields(image_path)
+
+            matcher = _taxon_matcher()
+            # Confidence is scored on the RAW read (so a FUZZY read gets ~0.5 and
+            # is flagged) -- before we snap the value to GBIF's canonical name.
+            data["confidence"] = build_confidence(
+                data, words,
+                sc_samples=sc_samples,
+                vision_fields=vision_fields,
+                taxon_matcher=matcher,
+                detail=detail_enabled(),
+            )
+
+            # scientificName correction: replace the read with GBIF's accepted
+            # species, preserving the verbatim read + match type. EXACT keeps a
+            # valid/synonym name's verbatim as meaningful; FUZZY means the verbatim
+            # was a misread. Lossless: nothing is discarded.
+            raw_sci = data.get("scientificName", "")
+            if raw_sci and str(raw_sci).strip().upper() != "UNKNOWN":
+                corrected, match_type = matcher.correct(raw_sci)
+
+                # P3 vision tiebreak: only when GBIF can't resolve the text read at
+                # all do we fall back to the independent vision read -- and only if
+                # GBIF resolves THAT to a different species. Conservative by design:
+                # it recovers misreads that GBIF correction alone can't touch
+                # (75.4% -> 80.5%, 27 fixed / 4 regressed on the GBIF-NE set) while
+                # never overriding a name GBIF already validated. No-op without the
+                # vision signal (CONFIDENCE_ENHANCED off).
+                if match_type not in ("EXACT", "FUZZY"):
+                    vis_sci = (vision_fields or {}).get("scientificName", "")
+                    if vis_sci and str(vis_sci).strip().upper() != "UNKNOWN":
+                        vis_corr, vis_mt = matcher.correct(vis_sci)
+                        if vis_mt in ("EXACT", "FUZZY") and _binomial(vis_corr) != _binomial(raw_sci):
+                            corrected, match_type = vis_corr, vis_mt
+                            data["_scientificNameSource"] = "vision_tiebreak"
+
+                data["_taxonMatchType"] = match_type
+                if corrected and corrected != raw_sci:
+                    data["verbatimScientificName"] = raw_sci
+                    data["scientificName"] = corrected
 
             return json.dumps(data)
         except Exception as e:

@@ -12,10 +12,12 @@ and locality is flagged low-reliability in `_meta` while its scorer is improved.
 
 from typing import Optional
 
-# our field name -> DWC key used in both the flat object and the _confidence map
+# our field name -> DWC key used in both the flat object and the _confidence map.
+# The flat object stays exactly the middleware's contract (one scientificName);
+# the raw read is surfaced in _meta, not as a competing flat field.
 FIELD_TO_DWC = {
     "recordedBy": "recordedBy",
-    "scientificName": "scientificName",
+    "scientificName": "scientificName",   # GBIF-corrected accepted name (the shown value)
     "eventDate": "eventDate",
     "location": "locality",
     "barcode": "catalogNumber",       # TODO: confirm exact DWC key with SWE team
@@ -66,9 +68,18 @@ def to_middleware_envelope(result: dict, model: str = "azure") -> dict:
             confidence[FIELD_TO_DWC[our]] = v
     env["_confidence"] = confidence
 
-    env["_meta"] = {
+    meta = {
         "model": model,
         "schema_version": SCHEMA_VERSION,
         "field_notes": FIELD_NOTES,
     }
+    # scientificName was GBIF-corrected: surface the raw read + match type in _meta
+    # (not as a flat field), so the contract shape is unchanged and the portal can
+    # optionally show "originally read as ...". taxon_match_type distinguishes a
+    # valid/synonym verbatim (EXACT) from a corrected misread (FUZZY).
+    if result.get("verbatimScientificName"):
+        meta["verbatim_scientificName"] = result["verbatimScientificName"]
+    if result.get("_taxonMatchType"):
+        meta["taxon_match_type"] = result["_taxonMatchType"]
+    env["_meta"] = meta
     return env
