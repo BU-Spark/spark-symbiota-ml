@@ -6,8 +6,10 @@ missing from `_confidence` means "confidence unavailable" -> the UI shows the
 value with no score bar.
 
 We ship confidence for the five validated fields; institutionCode's confidence
-is omitted for now (no valid ground truth yet -- being resolved with the team),
-and locality is flagged low-reliability in `_meta` while its scorer is improved.
+is omitted for now (no valid ground truth yet -- being resolved with the team).
+`locality` now bundles locality/county/stateProvince as one string, with the
+county/state often INFERRED from the town -- the parsed parts ride in
+`_meta.location_structured` (see FIELD_NOTES).
 """
 
 from typing import Optional
@@ -29,7 +31,8 @@ CONFIDENCE_FIELDS = ["recordedBy", "scientificName", "eventDate", "location", "b
 
 # Per-field notes surfaced in _meta (e.g. so the UI can mark a weak signal).
 FIELD_NOTES = {
-    "locality": "low reliability; scorer improvement in progress",
+    "locality": "bundles locality, county and stateProvince; county/state may be "
+                "inferred from the town -- see _meta.location_structured for the parts",
 }
 
 SCHEMA_VERSION = 1
@@ -81,5 +84,10 @@ def to_middleware_envelope(result: dict, model: str = "azure") -> dict:
         meta["verbatim_scientificName"] = result["verbatimScientificName"]
     if result.get("_taxonMatchType"):
         meta["taxon_match_type"] = result["_taxonMatchType"]
+    # location is shipped as one flat "locality, county, state" string (DWC locality);
+    # the parsed admin parts ride in _meta so the portal can migrate to separate
+    # stateProvince/county DWC fields without a pipeline change.
+    if result.get("_locationStructured"):
+        meta["location_structured"] = result["_locationStructured"]
     env["_meta"] = meta
     return env

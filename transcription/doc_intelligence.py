@@ -77,7 +77,7 @@ def extract_info(text: str, example_result: str, example_output: str, temperatur
     # Set your OpenAI API key
     openai.api_key = os.environ["OPENAI_API_KEY"]
 
-    prompt = f"Your goal is to translate (if necessary) and then extract six items from a string of text: the name of the specimen collector, the location the specimen was collected, the taxon name (genus and species, minimally) and/or any identifying information about the specimen, the date the specimen was collected, the barcode associated with the specimen, and the collection/institution code. For the taxon name, only output recognized species within the identified genus. Use the best information available or insert 'UNKNOWN' if there is none. Here is an example input \n{example_result} and example output \n{example_output}.\n\nReturn ONLY a valid JSON object (no markdown, no commentary) with the six fields plus a 'confidence' object giving your confidence from 0 to 1 that each field is correct. Format:\n{{\"recordedBy\": ..., \"location\": ..., \"scientificName\": ..., \"eventDate\": ..., \"barcode\": ..., \"institutionCode\": ..., \"confidence\": {{\"recordedBy\": 0.0, \"location\": 0.0, \"scientificName\": 0.0, \"eventDate\": 0.0, \"barcode\": 0.0, \"institutionCode\": 0.0}}}}\n\nHere is your attempt: \n{text}"
+    prompt = f"Your goal is to translate (if necessary) and then extract six items from a string of text: the name of the specimen collector, the location the specimen was collected (as STRUCTURED administrative geography -- stateProvince, county, and the specific locality/place; if the state or county is not written explicitly, INFER it from the locality and region using your knowledge of US geography), the taxon name (genus and species, minimally) and/or any identifying information about the specimen, the date the specimen was collected, the barcode associated with the specimen, and the collection/institution code. For the taxon name, only output recognized species within the identified genus. Give the county WITHOUT the word 'County'. Use the best information available or insert 'UNKNOWN' if there is none. Here is an example input \n{example_result} and example output \n{example_output}.\n\nReturn ONLY a valid JSON object (no markdown, no commentary) with the six fields plus a 'confidence' object giving your confidence from 0 to 1 that each field is correct. Format:\n{{\"recordedBy\": ..., \"location\": {{\"stateProvince\": ..., \"county\": ..., \"locality\": ...}}, \"scientificName\": ..., \"eventDate\": ..., \"barcode\": ..., \"institutionCode\": ..., \"confidence\": {{\"recordedBy\": 0.0, \"location\": 0.0, \"scientificName\": 0.0, \"eventDate\": 0.0, \"barcode\": 0.0, \"institutionCode\": 0.0}}}}\n\nHere is your attempt: \n{text}"
 
     try:
         # Send the request to the API
@@ -105,9 +105,11 @@ def extract_info(text: str, example_result: str, example_output: str, temperatur
 # because it costs an extra gpt-4o-mini vision call per specimen.
 VISION_PROMPT = (
     "You are reading a herbarium specimen sheet. From the image, extract exactly "
-    "these six fields and return ONLY a JSON object (no markdown): recordedBy "
-    "(collector), location, scientificName (genus species), eventDate (ISO), "
-    "barcode (catalog number), institutionCode. Use 'UNKNOWN' if not legible."
+    "these fields and return ONLY a JSON object (no markdown): recordedBy "
+    "(collector), location as {stateProvince, county, locality} (infer state/county "
+    "from the town + region if not written; county WITHOUT the word 'County'), "
+    "scientificName (genus species), eventDate (ISO), barcode (catalog number), "
+    "institutionCode. Use 'UNKNOWN' if not legible."
 )
 
 _TAXON_MATCHER = None
@@ -125,6 +127,17 @@ def _binomial(name: str) -> str:
     # genus + species pair (first two significant tokens), used to compare a text
     # read against a vision read for the P3 tiebreak. Matches the policy eval.
     return " ".join([t for t in _tokenize(name) if len(t) >= 3][:2])
+
+
+def _flatten_location(loc):
+    # Structured {stateProvince, county, locality} -> the middleware's flat
+    # "locality, county, state" string (Option A). Plain strings pass through.
+    if isinstance(loc, dict):
+        def c(k):
+            v = loc.get(k)
+            return "" if (v is None or str(v).strip().upper() == "UNKNOWN") else str(v).strip()
+        return ", ".join(p for p in (c("locality"), c("county"), c("stateProvince")) if p)
+    return loc if loc is not None else ""
 
 
 def _enhanced_enabled() -> bool:
@@ -194,10 +207,19 @@ def run_doc_intell_pipeline(image_path: str):
             data.pop("confidence", None)
             data["image_path"] = image_path
 
+            # Structured location -> preserve the parts in _meta and flatten to the
+            # middleware's single "locality, county, state" string. The flat string
+            # also lets location_confidence parse a state for the vision cross-check.
+            if isinstance(data.get("location"), dict):
+                data["_locationStructured"] = data["location"]
+                data["location"] = _flatten_location(data["location"])
+
             sc_samples = vision_fields = None
             if _enhanced_enabled():
                 sc_samples = _self_consistency_samples(document_content, k=3)
                 vision_fields = vision_extract_fields(image_path)
+                if vision_fields and isinstance(vision_fields.get("location"), dict):
+                    vision_fields["location"] = _flatten_location(vision_fields["location"])
 
             matcher = _taxon_matcher()
             # Confidence is scored on the RAW read (so a FUZZY read gets ~0.5 and

@@ -25,6 +25,7 @@ grounding). Default output is one float per field; detail mode adds a dict.
 """
 
 import datetime
+import json
 import os
 import re
 import unicodedata
@@ -236,11 +237,48 @@ def _sc_agreement(values: list) -> Optional[float]:
 # --------------------------------------------------------------------------- #
 #  per-field confidence scorers (validated best signal + graceful fallback)
 # --------------------------------------------------------------------------- #
-def location_confidence(value: str, ocr_words: list = None) -> Optional[float]:
-    # rho +0.49: fraction of recognized real places (town/county/state), capped
-    # at 3 -- a complete geographic answer is the strongest correctness signal.
-    if _empty(value):
+_STATE_IDX = None  # {state name or 2-letter code (lower) -> canonical 2-letter code}
+
+
+def _state_index():
+    global _STATE_IDX
+    if _STATE_IDX is None:
+        idx = {}
+        try:
+            import geonamescache
+            for s in geonamescache.GeonamesCache().get_us_states().values():
+                idx[s["name"].lower()] = s["code"]
+                idx[s["code"].lower()] = s["code"]
+        except Exception:
+            pass
+        _STATE_IDX = idx
+    return _STATE_IDX
+
+
+def _state_code(text: str) -> Optional[str]:
+    # Canonical US state code parsed from a location string ("Wolfeboro, Carroll,
+    # New Hampshire" -> "NH"), so an OCR-derived state and a vision-derived state
+    # can be compared regardless of name/abbreviation form.
+    idx = _state_index()
+    if not idx or _empty(text):
         return None
+    # Our flat location is "locality, county, state" -> the state is the LAST
+    # component. Scan components from the end so a state-named locality/county
+    # ("Washington, Litchfield, Connecticut") doesn't shadow the real state.
+    parts = [p.strip() for p in re.split(r"[,;.]", str(text)) if p.strip()]
+    for part in reversed(parts):
+        if part.lower() in idx:
+            return idx[part.lower()]
+    for part in reversed(parts):
+        for t in _tokenize(part):
+            if t in idx:
+                return idx[t]
+    return None
+
+
+def _location_completeness(value: str, ocr_words: list = None) -> Optional[float]:
+    # Fraction of recognized real places (town/county/state), capped at 3. Weak
+    # fallback used when a state can't be parsed for the vision cross-check.
     geo = _geo()
     if not geo:
         return match_field(value, ocr_words or [])[0]
@@ -251,6 +289,28 @@ def location_confidence(value: str, ocr_words: list = None) -> Optional[float]:
     known = sum(1 for c in comps if c.lower() in cities or c.lower() in states
                 or any(t in cities or t in states for t in _tokenize(c)))
     return round(min(known, 3) / 3.0, 4)
+
+
+def location_confidence(value: str, ocr_words: list = None,
+                        vision_value: str = None) -> Optional[float]:
+    # rho +0.38 (was +0.18 on structured output): the structured extraction now
+    # always emits a full state/county/town, so completeness saturates. The strong
+    # signal is an INDEPENDENT vision read of the state -- vision reads the town from
+    # PIXELS while the LLM reads it from OCR TEXT, so when their inferred states
+    # DISAGREE that flags a misread (confident-wrong ~5% at ~97% coverage). Falls
+    # back to completeness when either side has no parseable state.
+    vis_st = _state_code(vision_value) if vision_value and not _empty(vision_value) else None
+    llm_st = None if _empty(value) else _state_code(value)
+    # Whenever the independent vision read yields a state, its agreement IS the
+    # signal -- even if the LLM location is empty or has no state. A mismatch (the
+    # LLM missed a location vision saw, or read a different one) is exactly what
+    # should be flagged for review, so we score it low rather than returning None
+    # or the weak completeness score. Fall back only when vision offers no state.
+    if vis_st is not None:
+        return 1.0 if llm_st == vis_st else 0.2
+    if _empty(value):
+        return None
+    return _location_completeness(value, ocr_words)
 
 
 def _sig_digits(text: str) -> str:
@@ -364,9 +424,14 @@ def _eventdate_validity(value: str, ocr_words: list) -> Optional[float]:
 
 def eventdate_confidence(value: str, ocr_words: list, sc_samples: list = None,
                          vision_value: str = None, k: int = 3) -> Optional[float]:
-    # rho +0.42: mean of self-consistency agreement (K re-reads) and vision
-    # agreement -- two independent signals. Falls back to date validity when
-    # neither is supplied.
+    # Base = mean of self-consistency agreement (K re-reads) + vision string
+    # agreement; falls back to date validity when neither is supplied. Then two
+    # corrections that cut confident-wrong 16%->~10% (a year-digit misread is
+    # reproduced identically across re-reads, so sc can't catch it):
+    #   * PLAUSIBILITY -- an out-of-range year (e.g. "1001", a misread century) is
+    #     wrong however stably it reproduces -> zero it.
+    #   * VISION YEAR veto -- vision is an independent read of the year; if it lands
+    #     on a DIFFERENT year, that is strong evidence of a misread -> halve.
     if _empty(value):
         return None
     parts = []
@@ -376,9 +441,56 @@ def eventdate_confidence(value: str, ocr_words: list, sc_samples: list = None,
             parts.append(a)
     if vision_value and not _empty(vision_value):
         parts.append(_ratio(value, vision_value))
-    if parts:
-        return round(sum(parts) / len(parts), 4)
-    return _eventdate_validity(value, ocr_words)
+    score = round(sum(parts) / len(parts), 4) if parts else _eventdate_validity(value, ocr_words)
+    if score is None:
+        return None
+    py = _event_year(value)
+    if py is None or not (1600 <= py <= datetime.date.today().year):
+        return 0.0  # implausible year -> not trustworthy regardless of agreement
+    if vision_value and not _empty(vision_value):
+        vy = _event_year(vision_value)
+        if vy is not None and vy != py:
+            score *= 0.5
+    return round(score, 4)
+
+
+# --------------------------------------------------------------------------- #
+#  calibration (raw signal -> probability of correctness)
+# --------------------------------------------------------------------------- #
+_CALIBRATION = None  # {field: [[x, p], ...]} isotonic knots fit by nbs/fit_calibration.py
+
+
+def _calibration():
+    global _CALIBRATION
+    if _CALIBRATION is None:
+        path = os.path.join(os.path.dirname(__file__), "calibration.json")
+        try:
+            _CALIBRATION = json.load(open(path, encoding="utf-8"))
+        except Exception:
+            _CALIBRATION = {}  # no map -> scores pass through uncalibrated
+    return _CALIBRATION
+
+
+def _apply_calibration(field: str, score: Optional[float]) -> Optional[float]:
+    # Map a raw signal to a calibrated probability via the field's isotonic knots
+    # (piecewise-linear). Monotonic -> preserves ranking/rho, only fixes the numbers
+    # so conf=0.8 means ~80% correct. Fields without a map (e.g. recordedBy, already
+    # well-calibrated) pass through unchanged.
+    if score is None:
+        return None
+    knots = _calibration().get(field)
+    if not knots:
+        return score
+    if score <= knots[0][0]:
+        return knots[0][1]
+    if score >= knots[-1][0]:
+        return knots[-1][1]
+    for i in range(1, len(knots)):
+        x1, y1 = knots[i]
+        if score <= x1:
+            x0, y0 = knots[i - 1]
+            return round(y0 if x1 == x0 else y0 + (y1 - y0) * (score - x0) / (x1 - x0), 4)
+    return knots[-1][1]
 
 
 # --------------------------------------------------------------------------- #
@@ -388,7 +500,7 @@ def _field_confidence(field: str, value: str, ocr_words: list,
                       sc_samples, vision_fields, taxon_matcher):
     v = lambda f: (vision_fields or {}).get(f)  # noqa: E731
     if field == "location":
-        return location_confidence(value, ocr_words)
+        return location_confidence(value, ocr_words, v("location"))
     if field == "barcode":
         bscs = [s.get("barcode", "") for s in sc_samples] if sc_samples else None
         return barcode_confidence(value, ocr_words, bscs)
@@ -414,11 +526,15 @@ def build_confidence(fields: dict, ocr_words: list, sc_samples: list = None,
     # Default output: {field: float|None}. detail=True: {field: {"score":..., "coverage":...}}.
     confidence = {}
     for field in FIELDS:
-        score = _field_confidence(field, fields.get(field, ""), ocr_words,
-                                  sc_samples, vision_fields, taxon_matcher)
+        raw = _field_confidence(field, fields.get(field, ""), ocr_words,
+                                sc_samples, vision_fields, taxon_matcher)
+        # Calibrate the raw signal to a probability of correctness (monotonic, so
+        # ranking is unchanged; only the numbers become meaningful). No-op for
+        # fields without a calibration map or when calibration.json is absent.
+        score = _apply_calibration(field, raw)
         if detail:
             # keep a "coverage" key so envelope.py's detail-shape fallback works
-            confidence[field] = {"score": score, "coverage": score,
+            confidence[field] = {"score": score, "coverage": score, "raw": raw,
                                  "ocr_read": match_field(fields.get(field, ""), ocr_words)[1]}
         else:
             confidence[field] = score
