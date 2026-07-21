@@ -1,0 +1,835 @@
+4167479319: Massachusetts, Harwich, borders of Hawk's Nest Pond
+5077474302: Middletown
+5077495640: Thompson
+5077506799: Back Bay. Boston
+5077560662: Marblehead Neck
+5077485778: Arnold Arboretum
+5077499095: Charles River meadow, Dedham
+5077536349: East Greenwich. South Kingstown
+5077471795: side of Chestnut Run path; Milton
+5077486804: Tashmoo Lake, Tisbury
+5077500211: Brookline Reservoir grounds. My willow garden
+5077534735: Hiram
+5077468236: Springfield
+5077496768: Brookline
+5077516702: Grassy Pond, Hopkinton
+5077555585: West Holyoke, Holyoke.
+5077479247: Middletown
+5077502322: Brookline Reservoir Grounds. My willow garden.
+5077536503: Southborough, Brookline
+5077468905: Round Pond; Tewksbury
+5077488739: Ridgefield
+5077509542: Orono; 44.883125 -68.671977
+5077557521: Tisbury
+2517796795: along Penobscot river. near Mattawamkeag.
+2234552587: Greenfield; 42.587586 -72.599534
+3709904563: Sandy and mossy crevices between loose stones, 1675-1830m., Mt. Washington, New Hampshire
+4929633477: Caribou Bog, Crystal.
+5102791568: Along Kennebec River, Gardiner.
+1262197063: Rhode Island
+1228467388: Willoughby
+1228387837: Rhode Island
+1228563145: Lemon Fair River
+1228285927: Rhode Island
+1228348020: Westminster
+1228621608: Nantasket Beach
+1228426399: Plymouth
+1424787620: Athens
+1701731618: Mount Holyoke
+1228224379: Orono
+1228211064: Orono
+1228181367: Rhode Island
+1228594112: Ashland
+1228598910: Lincoln
+1228308578: Orange
+1228357090: Randolph
+1262196350: Owls Head
+1228633909: Pleasant Ridge, Clear Pond
+1228372988: Van Buren
+1424770386: Monhegan Island
+1424770648: along the St. John River
+1944822763: Amherst
+318052865: Stony Brook Reservation
+623648077: Harland Street, Milton
+623648005: Milton
+1847923276: Ashland
+1228433978: Dorchester
+1262197442: Amherst
+1228310033: Mount Toby
+1424774660: Charlotte
+1701739496: Mill River
+1262190966: Needham
+1228599514: Amherst
+1228555893: Mount Mansfield
+1228185316: estuary of the Cathance River
+1228571272: swamp N of Glover Pond
+1424787121: Athens
+1228439367: White Mountains
+1262194578: Easton
+1228180607: Jaffrey
+1228211518: Middleborough
+1424771363: Wells
+1262198907: Mount Lafayette
+1228279815: Molly's Pond swamp
+1228563607: Manchester
+1701744971: Marblehead Neck
+1424785197: Amherst
+1228555530: South Dennis
+1424777572: Barnet
+1228211767: Dedham
+1228270473: Vassalboro
+1424766886: Rhode Island
+1262198935: Mount Washington
+1990687919: Harwich
+1424766718: Middlebury
+1228289262: Brookline
+1228276209: Rhode Island
+1228191412: Dorchester
+1228241197: Bridgeport
+1228417134: Mount Lafayette. Eagle Lake
+1262198501: Barre
+1228160418: Rutland
+1944820479: Pico Pond
+1228213069: South Kingstown
+1228394028: Woods Hole
+1228545897: Warwick
+1701731680: Sudbury
+1228586942: Charlotte
+1228500166: Charlotte
+1424768562: Arlington
+1038922270: Roadside, Queen St. near Lansing St
+1038923052: stream near Yale field
+1038929471: West Rock
+1038931432: ravine near the Farmington River
+1038936870: Well established at old nursery
+1038937445: near High Rock Mountain
+1038938673: roadside in woods Woodruff St
+1038941785: muddy places
+1038943235: Hartford Meadow
+1038947294: Field near Spaulding's Pond
+1038951087: salt marshes at Griswold Pt
+1038964744: dry railroad bank
+1038967261: Hartford Turnpike off of NW corner of Cedar Grove Cemetary
+1038973493: in grassland
+1038982319: marshes of Quinnipiac River near Muddy Brook
+1038984796: Meriden Avenue & East Street
+1038987198: Swan's Point
+1038990677: Atnati St
+1038993532: Groton Long Point
+1038999086: cemetery
+1039000656: border of salt marsh
+1039007168: Maltby Lakes
+1039008561: Mill Street at rolling mill
+1039012209: dry rocky woods, Mt. Riga
+1039017798: Avon Park
+1039019287: Mill Street
+1039024079: Meriden Hills
+1038919124: Shaded ledges
+1038927790: land of C.J. Hull
+1038929172: 148 Main St
+1038936977: Devil's Hopyard
+1038944911: Meriden Mountain
+1038948400: Pleasant Street
+1038949260: Mason's Island
+1038957847: Chapinville
+1038965012: West Pond
+1038969136: river shore
+1038980337: escaped to roadside
+1038981467: Near New York, New Haven,  L.H. railroad station
+1038982612: Bluff Head
+1038985094: Oak Street
+1038988790: shore of Selden Cove
+1038996409: wet woods
+1039003540: near Moses Mountain, region of Fox Hollow
+1039013223: Dixwell Avenue
+1039018266: rocky outcrops
+1039024597: NW of Brooklawn
+1038919380: dry, deciduous woods
+1038926699: Meadows End
+1038936514: woodward swamp meadow
+1038945280: on the hills by the Naugatuck River
+1038946733: Westfield Woods
+1038950366: Center Street
+1038952851: Twin Lakes
+1038954234: Mine Hollow Street and Flanders Road
+1038958386: North Guilford, top of Totoket Mountain near Potters Road
+1038959022: Roton Point
+1038960408: Poquonnock Pond
+1038965472: swale near school house
+1038968116: near salt marshes, West End
+1038972688: Reservoir Park
+1038976444: Flanders Road
+1038977892: bog among sphagnum
+1038980442: tract south of Maltby Lakes
+1038981255: Railroad embankment
+1038982517: Wet valleys
+1038983765: Monhegan Island, Burnt Head
+1038987711: West River
+1038994964: woods south Shuttle St
+1038998744: Nabnasset Pond
+1039000764: Bingham Pond
+1039014113: Peat-bog
+1039017753: ledges of mica schist
+1039020370: roadside near Clarks Shops Milldale
+1039025334: along Wepawaug River
+1038920034: Wintergreen Falls
+1038930950: Sage's ravine
+1038932217: Mill River
+1038937879: woods south Shuttle St
+1038938571: Maltby Park
+1038940902: Quinnipiac
+1038945326: High Rock Grove, by old cellar
+1038951591: Bank of Housatonic River
+1038956694: in ditch near Hamlin Pond
+1038958838: sandy shore of Connecticut River
+1038959781: road to Orange, Maltby Lakes
+1038966369: sand plains north of Muddy River
+1038967596: Sages Ravine
+1038968942: Banks of Shetucket
+1038972189: dry wooded hillside, Tunxis Forest
+1038974849: West River
+1038983182: Meadow
+1038985670: salt marsh
+1038986720: Kent Falls
+1038997483: Selden's Cove
+1038999967: Bennett Ponds
+1039007407: waste ground
+1039011009: lower Prospect Reservoir
+1039012311: landlocked ditches on salt-meadows
+1039013300: High Rock Mountain
+1039016550: Waste ground along Willimantic River
+1039021508: peat-bog
+1039024698: shallow water of Long Pond
+1038923950: Open swamps
+1038925991: Sprague Meadow
+1038928338: West River Valley
+1038940821: near Oak Ore Rock
+1038941522: East Street at Misery Brook
+1038953304: Twin Lakes
+1038959947: east shore of Merimere Lake, Hanging Hills
+1038961573: Southford
+1038964055: river
+1038964757: Meadow Street, small cinder pile in vacant lot next to Osborn's Feed & Grain store
+1038973590: meadow, Chapel Street
+1038977348: dry cliffs
+1038989411: marsh near light house
+1038991820: Beardsley's Pond
+1038995825: Liberty Street
+1039004179: Flanders Street
+1039018402: Short Beach
+1038919101: Frisbie farm Gwen St
+1038921431: Leuworth (sp?) Street
+1038922769: Lake Saltonstall
+1038925373: Upper Parish
+1038930116: Hobart Street near house of P. Miller
+1038930849: Stepney
+1038932308: Thickets
+1038934305: Point Lookout
+1038935127: Fresh Pond
+1038948341: wet woods
+1038949514: RR cut
+1038956579: Flood plain of Connecticut River
+1038958083: Rocky woods
+1038966734: Roadside, East St
+1038968088: Pine Swamp
+1038969456: Rich woods
+1038971743: South Shuttle Street
+1038974064: summit of Meriden Mountain
+1038976241: near old cemetery
+1038976774: Liberty Street
+1038977889: West Pond
+1038987457: Selden Cove
+1038990039: swamp at Black Pond
+1038991254: Panther Swamp
+1038992408: about railroad yard
+1038994691: Near Long Hill
+1038997399: Climbing over shubbery bordering Saugatuck River
+1038998888: Pine Plains
+1039000086: Dog Pond
+1039001463: near Savage Street
+1039004950: power-line clearing
+1039007262: Bingham Pond
+1039010861: Luassapang Pond
+1039015537: Bog
+1039018984: Bog at Bingham Pond
+1039020842: Devil's Hopyard
+1038919093: West river st
+1038924796: Island at Rainbow
+1038927373: Reservoir Park
+1038934098: near Eden Avenue
+1038937559: upland pasture, base of Bull Mountain
+1038939293: sandy shore of Congamond Lake
+1038948903: muddy shore of Seldens Cove
+1038951613: Cobalt station
+1038966666: Pond Point
+1038969525: river at Bull's Bridge
+1038977542: Moose Hill
+1038991418: waste ground, Mumfords Point
+1038992968: South Shuttle
+1038995842: City Point
+1039005705: cranberry bog
+1039013844: near White Deer Rocks
+3051779004: Holbrook.
+2860528304: Dover
+2651336550: Jaffrey
+2265437445: Mount Desert Island...Great Heath, Great Cranberry Isle;;;;
+2814964301: Charles River.
+1503302652: Along railroad, Townshend.
+1913884734: Sandy Neck; Barnstable.
+1978899343: Bradley.
+1993700541: Concord.
+1995316840: Salisbury.
+1978898998: Brookline; Purgatory Swamp.
+1978899259: Jonesport.
+2456362875: Swanton; Lake Champlain.
+1882649036: Leicester, road from Silver Lake to Forestdale.
+1947780793: Mount Washington.
+1632928308: Wild Harbour, Falmouth.
+1880453164: Boothbay Harbor.
+1932275270: Old Wilson house; NW Bethel.
+1988305436: Nantucket.
+1882649139: Peterboro.
+1986494727: Fort Kent.
+1932275324: Willoughby Mountain.
+1978899246: New Boston.
+1503285012: Seal Harbor; Surveyor's line E of Wildwood Farm path.
+1978899530: S Sudbury.
+3075916304: Peterborough.
+2416924070: Springfield, MA.
+3066874302: Townshend.
+2643304301: Great Gulf, Mount Washington.
+1882648944: Peterboro.
+1978899461: Walpole.
+1947780930: Purgatory Swamp; Norwood.
+1901021281: Scituate.
+1503286271: Peterboro.
+1931419234: Barnstable.
+1503232747: Fort Fairfield.
+2313488711: Wellesley.
+1947780920: Purgatory Swamp; Norwood.
+1931419650: Gardiner.
+1978899104: Swanton.
+1989004194: Southington
+1989264527: East Dorset (Town of Dorset)
+1989420082: East Dorset (Town of Dorset)
+1989035285: East Dorset (Town of Dorset)
+1988736966: East Dorset
+1989366686: Williamstown
+1989198371: Manset Woods
+1988860958: East Dorset
+1989516651: Williamstown
+1988850432: East Dorset (Town of Dorset)
+2331305864: St. Francis, along the St. John River
+2651203345: Along the St. John River, St. Francis
+3353530310: Of Mt. Equinox. Manchester.
+2382923900: Rutland
+1928697670: Valley of the Deerfield River. In wood along Jencks Brook, Florida.
+1930265022: Between Richford and Canadian border
+1928113572: Falmouth Heights.
+1929234014: Edgartown. Marthas Vineyard.
+1931305241: Isles of Shoals
+1930940112: Marthas Vineyard. Venom [Bog].
+1930619555: Chappaquiddick Island
+2424009702: Middlebury
+1931282838: Vicinity of Tyringham.
+1929322046: Westmore
+1930287117: Alpine garden, Mt. Washington. [Inferred county from precise loc.]
+1930876208: Cedar Mountain, Monson.
+1928993170: Marthas Vineyard.
+1929545704: Clifton. Rocks on the shore.
+1929611302: Stratford
+1928291893: Nantucket Island, Nr. Gibbs Pond.
+1930699119: Bangor
+1928498737: Martha's Vineyard, Chilmark.
+1929115855: Orono.
+1928916863: Cambridge
+1930285142: S. Braintree. [Inferred county from precise loc.]
+1928610130: Pool E. of Aqueduct Bridge
+1929285845: Martha's Vineyard.
+1929129741: Banks of a brook.
+1930559866: Bog, Berkshire.
+1930867605: Martha's Vineyard.
+1927853858: vicinity of Tyringham
+1929736611: Proctor
+1928053554: Martha's Vineyard
+1929428985: margin of Round Pond
+1930051474: Dorchester.
+1928553969: Buckland.
+1929277228: Franconia. [Inferred county from precise loc.]
+1930515268: Clifton
+1930279211: Granville.
+1928779173: Johnson
+1929769660: East Hebron. [Inferred county from precise loc.]
+1931250939: Vicinity of Concord
+1928967128: Pond N.W. cor. of Speen St. and R.R.
+1937517228: Cottage City.
+1931270462: Near Maxcy's Pond
+1930124644: Merrimack
+1937523902: Charleston
+1928659437: Needham.  Charles River.
+1930106647: Sugar Hollow
+1931095537: Manchester and vicinity
+1928754839: vicinity of Tyringham
+1930040328: Millbury
+1929395508: Sherborn
+1929315924: Bog. Sherborn.
+2382934089: Fairlee
+1927917890: Peacham.
+1937513793: Cottage City.
+1927896217: Rutland
+1929050501: Vicinity of Tyringham.
+1930189554: Along Look's Brook
+1930755596: Border of cattail marsh, South Truro, Truro.
+1927769576: Mt. Mansfield
+1928966341: Gay Head.
+1929524668: Willoughby Mountain, Westmore
+1930801366: Town of Franklin; opposite cemetery
+1928535308: Marthya's Vineyard.  Menemsha, Chilmark
+1929096080: Pembroke.
+1928914504: Mt. Washington. [Inferred locality from precise loc.]
+1928795990: Arnold Arboretum.
+1930097371: Waste land, Boston.
+2235398663: Middlebury
+1927900820: Wet roadside, Jaffrey.
+1928485800: Mt. Mansfield
+2382933352: Newfane
+3969803645: Brandon; 43.79812 -73.087612
+2573055041: Hiram Bull Farm
+2573056276: Tinmouth channel
+2573056215: Double Road
+2573057841: High Bridge
+2573123082: Smuggler's Notch
+2573051449: Willoughby Lake, along Lake Road
+2573057760: Holly St.
+2573057605: Chocorua
+2573062790: Windsor Locks
+2573068592: Middlebury
+2573072947: Milford
+2573049073: Middlebury
+2573054612: Porter's Swamp
+2573058117: Camel's Hump
+2573077327: S of Evergreen Cemetery; Commonwealth Ave.
+2573083385: meadow by Neponset River
+2573087172: Colchester Pond
+2573112317: Torrey Meadow
+2573117206: Scanlon Swamp
+2573122252: Slope and summit Mt. Mansfield
+2573052783: Mt. Horrid
+2573096825: Smuggler's Notch
+2573098335: Winsted
+2573110115: Passumsic Road
+2573051813: Mount Mansfield
+2573055187: S. end of the first meadow W of RR
+2573058080: Base of South Mt.
+2573096939: Brooke's Woods
+2573099187: Lake Hortinia
+2573053041: Half Moon Cove
+2573100822: Kelly Bay, Lake Champlain
+2573103296: Woodwardia Bog, Fort Ethan Allen
+2573112248: Shore of Lake Champlain
+2573054356: Oak Island
+2573058671: Abby Pond
+2573074693: North Dorset
+2573074292: Mt. Mansfield
+2573076467: shore of Winter Pond
+2573088263: outlet of Long Pond
+2573088994: Lyndonville
+2573106881: Shore of Silver Lake
+2573118845: Lake Bomoseen
+2573123108: Bristol Pond
+5028658963: Oakes Gulf, Mount Washington, White Mountains
+5028658654: Alpine Garden, Mount Washington
+2859256981: Sudbury
+2859199116: Brandon
+2859003967: Brandon
+5028658928: Mount Washington
+1986983095: Top of Pack Monadnock Mountain
+1927881393: Nantucket Island
+1928900282: Sandy shore, Long [Neck], Nahant.
+1927997887: Bangor
+1931113355: Mt. Holyoke.
+1928905436: Pepperell
+1930284208: Chappaquiddick Island
+1927862421: Orono.
+2270463903: Middlebury
+2234579287: Berkshire County
+2331569623: Blue Hills Reservation, Mass. [Massachusetts]
+1990056488: Clark estate, Massachusetts Agricultural College, Amherst.
+5028658939: Alpine Garden, Mount Washington
+5028659226: headwall of Great Gulf, Mount Washington
+623648002: Milton, Churchills Lane
+318055182: Milton
+623648004: Milton
+5067906938: woods
+5067905143: South Wolfeboro
+5067911404: pasture
+5067909657: waste ground
+5067912877: Southwest of Camel's Rump Mountain
+5067911204: [no precise locality]
+5067913712: Charles Edward Willson Collection
+5067916934: Back Pond
+5067922152: [no precise locality]
+5067926540: [no precise locality]
+5067923827: South Chesterville
+5067928110: running over low thickets
+5067932607: open pasture
+5067931880: Bank of Penobscot River
+5067933115: near summit of Mount Lafayette
+5067941591: damp sandy shore
+5067942107: [no precise locality]
+5067945385: Cumberland Mills
+5067944611: South Chesterville
+5067958069: near Wells Beach
+5067960869: shady woods
+5067959232: Yellow Trail
+5067965674: [no precise locality]
+5067964898: Cumberland Foreside Bog
+5067966099: [no precise locality]
+5067970721: locality whited out
+5067968929: shady roadside
+5067971130: [no precise locality]
+5067973710: top of Earth Dam at pond
+5067973849: near Peabody River
+5067982483: [no precise locality]
+5067979242: edge of large brook
+5067905820: on or near private road to Birch Point
+5067908229: [no precise locality]
+5067909452: Horseman's Point
+5067910690: Hanover Vicinity
+5067910014: rough open pasture
+5067911208: [no precise locality]
+5067921051: [no precise locality]
+5067922292: Pleasant Pond Stream
+5067923978: Matinicus Island
+5067929990: [no precise locality]
+5067933290: [no precise locality]
+5067935762: Bruce Hill
+5067941180: Southgate's Woods
+5067951464: by local shed at blue wharf
+5067949742: wet place in a pasture
+5067949991: East Parsonsfield
+5067956561: Shade Bush
+5067960774: low ground
+5067963364: near Laundry
+5067964205: [no precise locality]
+5067972821: open low woods
+5067974613: [no precise locality]
+5067977986: [no precise locality]
+5067978152: East Parsonsfield
+5067980308: Androscoggin River
+5067981594: Valley of the Androscoggin River
+5067982891: moist shady woods
+5067981098: [no precise locality]
+5067984363: [no precise locality]
+5067986579: [no precise locality]
+5067984249: [no precise locality]
+5067905875: Charles Edward Willson Collection
+5067910617: grassy roadside
+5067911119: [no precise locality]
+5067916052: Center Sandwich
+5067921499: slightly moist mowing field
+5067921774: pond
+5067923496: wet shore
+5067928713: [no precise locality]
+5067933224: boggy pond
+5067934653: wet grassy meadow
+5067934851: [no precise locality]
+5067935013: wooded roadside
+5067939945: Huntington Ravine, Mount Washington
+5067941192: Charles Edward Williams Collection
+5067946627: Academy Grounds
+5067951867: Kents Hill
+5067950210: [no precise locality]
+5067957920: Hanover Crag
+5067958190: open woods
+5067959976: [no precise locality]
+5067962131: [no precise locality]
+5067968199: sandy river bank
+5067972384: summit of Mount Monadnock
+5067977205: shady grove
+5067982904: hillside pasture
+5067984870: edge of meadow brook
+5067907986: Pack Monadnock
+5067909735: roadside
+5067909052: open rich woods
+5067911273: [no precise locality]
+5067917286: [no precise locality]
+5067922495: Biddeford Pool
+5067923414: [no precise locality]
+5067927674: New Hampshire Agricultural College
+5067923956: Sandy Shore Lane Pond
+5067928161: New Hampshire Agricultural College
+5067928746: New Hampshire College of Agriculture and Mechanical Arts
+5067930008: [no precise locality]
+5067929299: [no precise locality]
+5067935458: [no precise locality]
+5067934634: meadow
+5067934080: Isle au Haut Lake
+5067940730: North Parsonsfield
+5067942038: low grass land
+5067943293: Banks Dead River
+5067947781: Charles Edward Williams Collection
+5067951513: where the brine from the pickle factory has saturated the soil with salt
+5067952770: flower bed at bungalow
+5067955560: swamps on Mckeen Street
+5067954796: Mount Cabot
+5067963729: meadow
+5067971328: Camp Cove
+5067971549: [no precise locality]
+5067977734: Wheeler Pond
+5067975986: Hermit Lake, Tuckerman Ravine, Mount Washington
+5067977197: The Fan, opposite Evan's house, north side of river
+5067980720: damp roadside
+5067978982: [no precise locality]
+5067980295: Wells Beach
+5067988604: Great Bog
+5067903843: Katahdin Lake
+5067907093: meadow
+5067910365: in a hen yard
+5067909633: [no precise locality]
+5067908875: [no precise locality]
+5067914454: [no precise locality]
+5067915854: [no precise locality]
+5067918032: Charles Edward Willson Collection
+5067919707: shallow pond
+5067923219: [no precise locality]
+5067927647: weed in low rich soil
+5067924141: Indian Garden
+5067930388: back of Knubble, Philbrook Farm
+5067932006: Border of Moose Pond
+5067929292: [no precise locality]
+5067933458: [no precise locality]
+5067936626: border of brook
+5067935027: salt marsh
+5067935285: among low birches at edge of swampy run
+5067941625: Nonesuch River
+5067941111: Charles Edward Williams Collection
+5067945369: Bald Head
+5067946599: [no precise locality]
+5067945898: [no precise locality]
+5067944282: in grass land
+5067948763: [no precise locality]
+5067951987: [no precise locality]
+5067956044: Rick's Cove
+5067961349: [no precise locality]
+5067961558: [no precise locality]
+5067962220: [no precise locality]
+5067963654: field
+5067963861: Lakewood
+5067971464: Sumner's Falls
+5067971707: locality whited out
+5067973109: Cumberland Yacht Landing
+5067975710: among tall herbage, bank of large brook
+5067977854: Railroad Track east of Station
+5067978308: Summit of Bald Cap
+5067981597: North Lubec
+5067980892: [no precise locality]
+5067984445: Orono and Vicinity
+5067984675: Valley of the Saco River
+5067985057: in a slough
+5067905597: roadside thicket
+5067905898: Minor Lake
+5067904144: Bank of Connecticut River, on road to Lyme
+5067911412: Orono and Vicinity
+5067908655: abandoned farm
+5067915486: near the Lake of the Clouds, White Mountains
+5067920075: island side of causeway to Birch Point
+5067922295: by Spottiswood Bog
+5067925708: roadside
+5067932446: St. John River
+5067937371: [no precise locality]
+5067934069: North Walpole
+5067942717: [no precise locality]
+5067947758: Windham Depot
+5067945143: Livermore Falls
+5067952689: [no precise locality]
+5067951878: [no precise locality]
+5067954596: South Chesterville
+5067957804: edge of woods
+5067957067: west Rust Pond
+5067958390: [no precise locality]
+5067959650: Valley of the Piscataquis River
+5067958873: shady moist rich woods
+5067965523: swamp
+5067966752: Muddy Pond, 1 mile from East Slide, Pamala, Mount Katahdin
+5067965949: shore of pond
+5067972845: forest
+5067975631: [no precise locality]
+5067975005: field
+5067980194: common throughout the state
+5067987445: waste ground
+5067987051: swamp
+5067989428: roadside
+5067904376: low thickets
+5067904666: Pequawket Bog, 9.9 hectare peatland complex situated between Long Sands Road and Pequawket Trail Road, off NH Route 25 and southeast of Ossippee Lake
+5067905195: open roadside
+5067912480: Valley of the Penobscot River, mouth of Reed Brook
+5067910710: swampy woods
+5067909051: [no precise locality]
+5067917789: Academy Grounds
+5067920778: [no precise locality]
+5067922988: [no precise locality]
+5067920211: open grassy field, oak island, in salt marsh
+5067924411: Matinicus Isle
+5067927166: [no precise locality]
+5067928387: Pond of Safety
+5067928796: above the South Basin, Mount Katahdin
+5067932087: [no precise locality]
+5067933591: [no precise locality]
+5067934819: Charles Edward Willson Collection
+5067938254: Greenville Junction
+5067940643: Rick's Cove
+5067948036: [no precise locality]
+5067952650: garden
+5067953575: Swamp opposite Bowman Station
+5067955808: roadside
+5067961410: gravelly shore of The Island
+5067964761: Lovewells Pond
+5067971698: locality whited out
+5067970911: [no precise locality]
+5067978224: Valley of the Penobscot River
+5067979236: Valley of the Dead River
+5067987469: [no precise locality]
+5067987894: George Pond
+5067990441: east of Hanover
+5067903379: Kittery Point
+5067903620: [no precise locality]
+5067905157: [no precise locality]
+5067908432: shore of Round Pond
+5067912197: [no precise locality]
+5067920898: Charles Edward Willson Collection
+5067923319: Banks of Presumpscot River
+5067927789: hen yard
+5067924068: Alpine Garden, Mount Washington
+5067926239: Railroad Side, North Concord
+5067932614: Summit of Pleasant Mountain
+5067930898: Charles Edward Willson Collection
+5067937362: [no precise locality]
+5067935787: Charles Edward Willson Collection
+5067942307: moist open roadside
+5067939642: North end of Island
+5067942153: by Stony Brook
+5067944416: locality whited out
+5067944702: among rank herbage, edge of salt marsh island
+5067948029: [no precise locality]
+5067952381: Matinicus
+5067950892: [no precise locality]
+5067954826: half wooded pasture
+5067956106: North Bridgton
+5067960400: Witkins Woods
+5067966523: St. John River
+5067967976: North Woodstock
+5067966207: Lower Penobscot Valley
+5067969435: [no precise locality]
+5067968661: locality whited out
+5067970895: [no precise locality]
+5067974357: good record
+5067976243: Charles Edward Willson Collection
+5067982479: [no precise locality]
+5067990442: Valley of the Saco River, East Baldwin
+5068013384: Scarborough
+5077491551: N Ferrisburg
+5077504773: Wayland, Heard Pond and adjacent sloughs
+5077542750: Ocean Point.
+5077468965: Cambridge
+5077490749: "Cathedral Woods"; Monhegan Island
+5077509592: Roque Bluffs
+5077552655: Middletown
+2242402194: Kents Hill, Maine.
+2859230343: near Fort Kent
+5052317287: Spectacle Pond, Wallingford.
+5052321544: About the mouth of Aroostook River. Fort Fairfield.
+5052355477: Deerfield
+5052346724: Concord
+5052344393: Charlotte
+4078019174: Temple, N. H. [New Hampshire]
+4077988054: Purgatory Swamp, Norwood, Mass. [Massachusetts]
+1135453008: Cromwell, Conn.
+1990222527: Fort Fairfield
+1990255431: East Hartford.
+1990255599: East Hartford.
+1990215991: Bridgeport
+1990224922: Hartford
+1990249265: Bolton, Conn.
+1990248159: South Windsor
+1990246932: Colchester Bog
+1990251221: Jonesport
+1990245874: Yarmouth
+1990245382: Eastville, Martha's Vineyard
+1990183840: Eastville, Martha's Vineyard, Mass.
+1990234312: Strand at margin of Lambert Lake.
+1990233912: Barkhamsted, Conn.
+1990214879: Cambridge
+1990233302: Thompson, conn.
+2992157320: Milford, Sunkhaze Stream
+2992166301: Israel Pond
+1228593552: West Quincy: Blue Hills Reservation, River Road
+1228449578: Aroostook River
+1228305856: Arlington
+1228630214: Violette Brook, along the St. John River
+1424769030: Charlotte
+1228505143: Willoughby Mountain
+1265791448: Middleborough
+1919926204: North Reading.
+1995316443: Peterborough.
+1882649009: Windsor.
+2242465652: Lower Penobscot Valley.
+1986494652: Williamstown; Greylock Mountain; NE slope of The Bluffs.
+1882649411: Osterviller.
+1946182630: Blaine.
+1914296577: Andover.
+1949969846: Milton; Hartland Street.
+2447820717: Boxford.
+1931419359: Peterborough.
+1914296955: West Barnstable.
+4081308002: Westport.
+4850287082: In a spring by rodeside. Amherst
+4850291275: North Groton.
+4850293200: Northfield.
+5101173311: Mt. Ascutney
+3413420610: Shelburne Pond bog
+3829946874: Kensington
+3965951366: [label: O. Leonhardt, Nossen i. S. Germania. Berliner Botanischer Tauschverein] Flora v. North Easton
+3340042773: border of Needham
+1039018816: low ground near Selden's Creek
+1039022721: bank of Factory Pond
+1038918758: Goshen Pond meadows
+1038921097: wet meadow
+1038925883: border of Greenwood Pond
+1038929771: Short Beach
+1038932247: Crescent Beach
+1038937071: Bog at Rainbow
+1038940640: North Woodbury
+1038943320: Connecticut River shore
+1038951950: Twin Lakes Bog
+1038963900: Minortown
+1038975762: moist woods near Bantam Lake
+1038978371: in old nursery
+1038982548: in stagnant water of old canal Mt. Caramel
+1038984757: Lake Wintergreen
+1038989480: near Housatonic River
+1038994275: Swamp
+1038999451: Safety Avenue
+1039006537: West Rock Ridge
+1039018793: dry rocky woods
+1039019776: sand flats, bed of Connecticut River
+3503185421: Little Nahant
+4533906593: Lyndon, Vermont
+2573052807: Buxton Brook
+2573054519: 1 mi below Shelburne Village
+2573104372: New Haven Swamp
+3416700475: Shore of Deerfield River by Bardwell ferry
+1844409171: Lamoille County
+1099043413: Monson, Mass.
+5074458380: Kingston
+5074459100: Field N.W. of campus
+5074460929: Kingston
+5074462401: Waverley Oaks
+5074462922: Woods Hole
+5074463633: Kingston Brown's pasture
+5074466908: Kingston
+5074468019: West Kingston
+5074468819: Kingston
+5074469577: Arnold Arboretum
+5074470404: Kingston Rd
+5102793515: Vicinity of Wolfeboro
