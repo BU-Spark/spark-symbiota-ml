@@ -1,15 +1,12 @@
 """Adapter: pipeline output -> the downstream middleware's flat DWC envelope.
 
-The Herbaria portal middleware (see the SWE team's contract) accepts a flat
+The Herbaria portal middleware accepts a flat
 Darwin-Core object plus a parallel `_confidence` map of floats 0-1. A field
 missing from `_confidence` means "confidence unavailable" -> the UI shows the
 value with no score bar.
 
 We ship confidence for the five validated fields; institutionCode's confidence
-is omitted for now (no valid ground truth yet -- being resolved with the team).
-`locality` now bundles locality/county/stateProvince as one string, with the
-county/state often INFERRED from the town -- the parsed parts ride in
-`_meta.location_structured` (see FIELD_NOTES).
+is omitted for now.
 """
 
 from typing import Optional

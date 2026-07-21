@@ -1,8 +1,5 @@
 """Per-field confidence for the OCR pipelines.
 
-Each pipeline produces six JSON fields assembled by an LLM from OCR text. These
-helpers score, per field, how much we should trust that value -- never from the
-LLM's own self-rating (subjective / hallucination-prone).
 
 The scoring was validated on n=482 GBIF-labeled specimens (see nbs/ and the
 `confidence-data-expansion-gbif` memory). The winning signal per field is a
@@ -43,8 +40,7 @@ FIELDS = [
 ]
 
 _MATCH_THRESHOLD = 0.8   # a field token must match an OCR word at least this closely
-_MIN_TOKEN_LEN = 2       # drop shorter tokens (initials, "de", "var") -- jittery matches
-
+_MIN_TOKEN_LEN = 2       # drop shorter tokens (initials, "de", "var") 
 
 # --------------------------------------------------------------------------- #
 #  low-level text helpers (also imported by the nbs/ eval scripts)
@@ -166,10 +162,7 @@ def _collector_fulls():
 class GbifTaxonMatcher:
     # GBIF taxonomic-backbone lookup, cached in-memory + on-disk so repeat names
     # are free. Powers two things: the scientificName confidence signal (match
-    # type) and canonical-name correction (.correct()).
-    #   matcher(name)        -> match type "EXACT"/"FUZZY"/"NONE"/... (or None on error)
-    #   matcher.correct(name)-> (canonical_name, match_type); snaps EXACT/FUZZY
-    #                           reads to GBIF's accepted species binomial.
+    # type) and canonical-name correction
     # Returns None match on network error so callers fall back to grounding.
     def __init__(self, cache_file=None, timeout=15):
         self.cache_file = cache_file or os.path.join(
@@ -293,19 +286,10 @@ def _location_completeness(value: str, ocr_words: list = None) -> Optional[float
 
 def location_confidence(value: str, ocr_words: list = None,
                         vision_value: str = None) -> Optional[float]:
-    # rho +0.38 (was +0.18 on structured output): the structured extraction now
-    # always emits a full state/county/town, so completeness saturates. The strong
-    # signal is an INDEPENDENT vision read of the state -- vision reads the town from
-    # PIXELS while the LLM reads it from OCR TEXT, so when their inferred states
-    # DISAGREE that flags a misread (confident-wrong ~5% at ~97% coverage). Falls
-    # back to completeness when either side has no parseable state.
     vis_st = _state_code(vision_value) if vision_value and not _empty(vision_value) else None
     llm_st = None if _empty(value) else _state_code(value)
     # Whenever the independent vision read yields a state, its agreement IS the
-    # signal -- even if the LLM location is empty or has no state. A mismatch (the
-    # LLM missed a location vision saw, or read a different one) is exactly what
-    # should be flagged for review, so we score it low rather than returning None
-    # or the weak completeness score. Fall back only when vision offers no state.
+    # signal. Fall back only when vision offers no state.
     if vis_st is not None:
         return 1.0 if llm_st == vis_st else 0.2
     if _empty(value):
@@ -315,7 +299,7 @@ def location_confidence(value: str, ocr_words: list = None,
 
 def _sig_digits(text: str) -> str:
     # Catalog-number digits without leading-zero padding, so "CBS.24501" and the
-    # DB's zero-padded "CBS.024501" compare equal (padding is a storage convention).
+    # DB's zero-padded "CBS.024501" compare equal 
     return _digits(text).lstrip("0")
 
 
@@ -334,11 +318,9 @@ def _barcode_sc_agreement(value: str, sc_samples: list) -> Optional[float]:
 
 
 def barcode_confidence(value: str, ocr_words: list, sc_samples: list = None) -> Optional[float]:
-    # rho +0.44 (was +0.20 vs true correctness): the length-vs-longest-run signal is
-    # BLIND to single-digit misreads -- a wrong digit keeps the right length and still
-    # matches the longest OCR run. So we lead with SELF-CONSISTENCY: how stably the K
+    # SELF-CONSISTENCY: how stably the K
     # re-reads reproduce the same catalog number. A shaky digit flips across re-reads.
-    # Falls back to the length ratio when no self-consistency context (enhanced off).
+    # Falls back to the length ratio when no self-consistency context.
     if _empty(value):
         return None
     d = _digits(value)
@@ -357,10 +339,8 @@ def barcode_confidence(value: str, ocr_words: list, sc_samples: list = None) -> 
 def scientificname_confidence(value: str, ocr_words: list = None,
                               taxon_matcher=None, vision_value: str = None) -> Optional[float]:
     # GBIF backbone match (EXACT->1.0, FUZZY->0.5, else 0.0), ensembled with the
-    # independent VISION read agreement. Name-match alone saturates (a valid-but-
-    # wrong species scores 1.0 -> 26% of high-conf wrong); multiplying by vision
-    # agreement pulls disagreements down and cuts confident-wrong to ~18.5%.
-    # Falls back to grounding when no matcher, and to name-only when no vision.
+    # independent VISION read agreement. Name-match alone saturates; multiplying by vision
+    # agreement pulls disagreements down and cuts confident-wrong
     if _empty(value):
         return None
     name = None
@@ -377,7 +357,7 @@ def scientificname_confidence(value: str, ocr_words: list = None,
 
 def recordedby_confidence(value: str, ocr_words: list = None,
                           vision_value: str = None) -> Optional[float]:
-    # rho +0.45: fuzzy match to the known-collector set, ensembled (mean) with
+    #  fuzzy match to the known-collector set, ensembled (mean) with
     # the independent vision read. Falls back to whichever is available.
     if _empty(value):
         return None
@@ -426,12 +406,7 @@ def eventdate_confidence(value: str, ocr_words: list, sc_samples: list = None,
                          vision_value: str = None, k: int = 3) -> Optional[float]:
     # Base = mean of self-consistency agreement (K re-reads) + vision string
     # agreement; falls back to date validity when neither is supplied. Then two
-    # corrections that cut confident-wrong 16%->~10% (a year-digit misread is
-    # reproduced identically across re-reads, so sc can't catch it):
-    #   * PLAUSIBILITY -- an out-of-range year (e.g. "1001", a misread century) is
-    #     wrong however stably it reproduces -> zero it.
-    #   * VISION YEAR veto -- vision is an independent read of the year; if it lands
-    #     on a DIFFERENT year, that is strong evidence of a misread -> halve.
+    # corrections that cut confident-wrong 16%->~10% 
     if _empty(value):
         return None
     parts = []
@@ -473,7 +448,7 @@ def _calibration():
 
 def _apply_calibration(field: str, score: Optional[float]) -> Optional[float]:
     # Map a raw signal to a calibrated probability via the field's isotonic knots
-    # (piecewise-linear). Monotonic -> preserves ranking/rho, only fixes the numbers
+    # (piecewise-linear). only fixes the numbers
     # so conf=0.8 means ~80% correct. Fields without a map (e.g. recordedBy, already
     # well-calibrated) pass through unchanged.
     if score is None:
