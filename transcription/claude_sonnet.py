@@ -41,9 +41,8 @@ def run_claude_pipeline(image_path):
         # maximum 5MB image via API 
         try:
             message = client.messages.create(
-                model="claude-3-7-sonnet-20250219",
+                model="claude-sonnet-5",
                 max_tokens=1024,
-                temperature = 0.1,
                 messages=[
                     {
                         "role": "user",
@@ -66,7 +65,9 @@ def run_claude_pipeline(image_path):
                     }
                 ],
             )
-            result = message.content[0].text
+            # Newer models can return a thinking block before the text block, so
+            # pick the first text block rather than content[0] blindly.
+            result = next((b.text for b in message.content if b.type == "text"), "")
             return result
     
         except Exception as e:
