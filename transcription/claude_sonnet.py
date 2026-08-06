@@ -27,8 +27,12 @@ def encode_image_to_base64(image_path):
     except Exception as e:
         print(f"An error occurred: {e}")
 
-def run_claude_pipeline(image_path):
-    
+DEFAULT_MODEL = "claude-sonnet-5"
+
+def run_claude_pipeline(image_path, model=DEFAULT_MODEL, return_usage=False):
+    # `model` lets the same prompt run across models (nbs/model_run.py); the prompt
+    # must stay identical for those runs to stay comparable.
+    # `return_usage` returns (text, usage) instead of text; usage is None on error.
     if image_path.lower().endswith((".png", ".jpg", ".jpeg")):
         image_utils.resize_image(image_path)
         encoded_image = encode_image_to_base64(image_path)
@@ -41,7 +45,7 @@ def run_claude_pipeline(image_path):
         # maximum 5MB image via API 
         try:
             message = client.messages.create(
-                model="claude-sonnet-5",
+                model=model,
                 max_tokens=1024,
                 messages=[
                     {
@@ -68,10 +72,16 @@ def run_claude_pipeline(image_path):
             # Newer models can return a thinking block before the text block, so
             # pick the first text block rather than content[0] blindly.
             result = next((b.text for b in message.content if b.type == "text"), "")
+            if return_usage:
+                u = message.usage
+                return result, {"input_tokens": u.input_tokens,
+                                "output_tokens": u.output_tokens,
+                                "model": message.model}
             return result
-    
+
         except Exception as e:
-            return f"An error occurred: {str(e)}"
+            err = f"An error occurred: {str(e)}"
+            return (err, None) if return_usage else err
     
 if __name__ == "__main__":
     #image_path =  "/Users/mvoong/Desktop/spark-symbiota-ml/transcription/data/new-england-samples/output/1262197442.jpeg"

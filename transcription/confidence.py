@@ -1,24 +1,16 @@
 """Per-field confidence for the OCR pipelines.
 
+Each field is scored by a reference check: compare the extracted value against an
+external authority (GBIF backbone, place gazetteer, known-collector list) or against
+an independent second read. OCR grounding is only a fallback -- on its own it does
+not predict correctness well.
 
-The scoring was validated on n=482 GBIF-labeled specimens (see nbs/ and the
-`confidence-data-expansion-gbif` memory). The winning signal per field is a
-"reference-check" -- compare the answer against an external reference or an
-independent second read -- not OCR grounding, which barely predicts correctness:
-
-  field            signal                                    rho    needs
-  ---------------  ----------------------------------------  -----  ------------------
-  location         # of recognized places (gazetteer)        +0.49  geonamescache
-  barcode          is it the longest digit-run on the label  +0.46  ocr words
-  recordedBy       fuzzy match to known-collector set        +0.45  collector list
-                   ensembled with the vision read              (+)  + vision_fields
-  scientificName   GBIF taxonomic-backbone match type        +0.43  taxon_matcher
-  eventDate        self-consistency (K=3) x vision agreement  +0.42  sc_samples+vision
-
-The extra inputs (sc_samples, vision_fields, taxon_matcher) are OPTIONAL: when a
-caller doesn't supply them, that field degrades gracefully to the best signal
-available from OCR alone (e.g. eventDate -> date validity, scientificName ->
+The extra inputs (sc_samples, vision_fields, taxon_matcher) are optional and enable
+the strongest signal for their field. Without them a field degrades to the best
+signal available from OCR alone (eventDate -> date validity, scientificName ->
 grounding). Default output is one float per field; detail mode adds a dict.
+
+Per-field signals, measurements, and the runbook: docs/azure-confidence-pipeline.md
 """
 
 import datetime
@@ -26,6 +18,7 @@ import json
 import os
 import re
 import unicodedata
+import warnings
 from difflib import SequenceMatcher
 from typing import Optional, Tuple
 
@@ -127,6 +120,22 @@ _COLLECTOR_FILES = [
 ]
 
 
+_GAZETTEER_WARNED = False
+
+
+def _warn_no_gazetteer(exc):
+    # Without the gazetteer, location confidence degrades to OCR grounding, which
+    # does not predict correctness. Warn once so the degradation is visible.
+    global _GAZETTEER_WARNED
+    if not _GAZETTEER_WARNED:
+        _GAZETTEER_WARNED = True
+        warnings.warn(
+            f"geonamescache unavailable ({exc!r}): location confidence is falling "
+            "back to OCR grounding, which is anti-correlated with accuracy. "
+            "Install it with: pip install -r transcription/requirements-doc-int.txt",
+            RuntimeWarning, stacklevel=3)
+
+
 def _geo():
     global _GEO
     if _GEO is None:
@@ -139,7 +148,8 @@ def _geo():
             for s in g.get_us_states().values():
                 states |= {s["name"].lower(), s["code"].lower()}
             _GEO = (cities, states)
-        except Exception:
+        except Exception as e:
+            _warn_no_gazetteer(e)
             _GEO = False  # geonamescache not installed -> location falls back
     return _GEO
 
@@ -232,6 +242,32 @@ def _sc_agreement(values: list) -> Optional[float]:
 # --------------------------------------------------------------------------- #
 _STATE_IDX = None  # {state name or 2-letter code (lower) -> canonical 2-letter code}
 
+# Traditional state abbreviations as they appear on historic labels
+# ("north Branford, Conn."). geonamescache carries only full names and 2-letter
+# codes. Forms that collide with common words ("ok", "in", "or", "me") are
+# omitted; those already arrive as 2-letter codes.
+_STATE_ABBREV = {
+    "ala": "AL", "ariz": "AZ", "ark": "AR", "cal": "CA", "calif": "CA",
+    "colo": "CO", "conn": "CT", "del": "DE", "fla": "FL", "ida": "ID",
+    "ill": "IL", "ind": "IN", "kan": "KS", "kans": "KS", "mass": "MA",
+    "mich": "MI", "minn": "MN", "miss": "MS", "mont": "MT", "neb": "NE",
+    "nebr": "NE", "nev": "NV", "okla": "OK", "ore": "OR", "oreg": "OR",
+    "penn": "PA", "penna": "PA", "tenn": "TN", "tex": "TX", "vt": "VT",
+    "wash": "WA", "wis": "WI", "wisc": "WI", "wyo": "WY",
+    # dotted multi-word forms, post-normalisation (see _strip_letter_dots)
+    "nh": "NH", "nj": "NJ", "nm": "NM", "ny": "NY", "nc": "NC", "nd": "ND",
+    "ndak": "ND", "ri": "RI", "sc": "SC", "sd": "SD", "sdak": "SD",
+    "wva": "WV", "dc": "DC",
+}
+
+# "N.H." -> "NH", "W. Va." -> "WVa". Strips a period following a single-letter
+# word so the split on [,;.] does not break dotted abbreviations apart.
+_LETTER_DOT_RE = re.compile(r"(?<=\b[A-Za-z])\.\s?")
+
+
+def _strip_letter_dots(text: str) -> str:
+    return _LETTER_DOT_RE.sub("", str(text))
+
 
 def _state_index():
     global _STATE_IDX
@@ -242,8 +278,11 @@ def _state_index():
             for s in geonamescache.GeonamesCache().get_us_states().values():
                 idx[s["name"].lower()] = s["code"]
                 idx[s["code"].lower()] = s["code"]
-        except Exception:
-            pass
+        except Exception as e:
+            _warn_no_gazetteer(e)
+        # Static, so state parsing still works without the gazetteer.
+        for k, v in _STATE_ABBREV.items():
+            idx.setdefault(k, v)
         _STATE_IDX = idx
     return _STATE_IDX
 
@@ -258,7 +297,7 @@ def _state_code(text: str) -> Optional[str]:
     # Our flat location is "locality, county, state" -> the state is the LAST
     # component. Scan components from the end so a state-named locality/county
     # ("Washington, Litchfield, Connecticut") doesn't shadow the real state.
-    parts = [p.strip() for p in re.split(r"[,;.]", str(text)) if p.strip()]
+    parts = [p.strip() for p in re.split(r"[,;.]", _strip_letter_dots(text)) if p.strip()]
     for part in reversed(parts):
         if part.lower() in idx:
             return idx[part.lower()]
@@ -286,15 +325,18 @@ def _location_completeness(value: str, ocr_words: list = None) -> Optional[float
 
 def location_confidence(value: str, ocr_words: list = None,
                         vision_value: str = None) -> Optional[float]:
-    vis_st = _state_code(vision_value) if vision_value and not _empty(vision_value) else None
-    llm_st = None if _empty(value) else _state_code(value)
-    # Whenever the independent vision read yields a state, its agreement IS the
-    # signal. Fall back only when vision offers no state.
-    if vis_st is not None:
-        return 1.0 if llm_st == vis_st else 0.2
+    # Graded place count is the score; a vision read that parses a different state
+    # halves it. State agreement is too coarse to be the score on its own -- it
+    # says nothing about the locality and county, which carry most of the accuracy.
     if _empty(value):
         return None
-    return _location_completeness(value, ocr_words)
+    base = _location_completeness(value, ocr_words)
+    if base is None:
+        return None
+    vis_st = _state_code(vision_value) if vision_value and not _empty(vision_value) else None
+    if vis_st is not None and _state_code(value) != vis_st:
+        base *= 0.5
+    return round(base, 4)
 
 
 def _sig_digits(text: str) -> str:

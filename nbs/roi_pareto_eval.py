@@ -1,17 +1,15 @@
-"""B3 (reviewer-hours-saved ROI) + B4 (base-vs-enhanced per-field cost/value Pareto).
+"""Reviewer-hours saved, and whether the enhanced signals earn their cost.
 
-Both run entirely off the cached OCR / self-consistency / vision results -- ZERO API
-cost. Reuses the exact load + lenient-correctness scoring of
-nbs/confidence_threshold_table.py so the numbers are consistent with the shipped
-confidence.
+Runs off the cached OCR / self-consistency / vision results, so no API cost. Reuses
+the load and lenient-correctness scoring of nbs/confidence_threshold_table.py so the
+numbers stay consistent with the shipped confidence.
 
-B3: if reviewers auto-accept fields whose confidence >= a cutoff and only hand-check
-    the rest, how many reviewer-hours does that save on a corpus of N specimens, and
-    how many wrong values slip through unreviewed?
-
-B4: the enhanced signals (self-consistency + vision) cost ~2x the base pipeline
-    ($4.5 vs $2 / 1,000). Field by field, what does that 2x actually buy in
-    discrimination (Spearman rho) and missed-error rate? -> where to spend it.
+Reports two things:
+  - if reviewers auto-accept fields at or above a confidence cutoff and hand-check
+    the rest, how many reviewer-hours that saves on a corpus of N specimens and how
+    many wrong values slip through unreviewed.
+  - per field, what the enhanced signals ($4.5 vs $2 per 1,000) buy in
+    discrimination and missed-error rate.
 
     python nbs/roi_pareto_eval.py --gt-dir transcription/data/gbif-ne-500
 """
@@ -172,11 +170,11 @@ def collect(gt_dir):
     return rows, n_specimens
 
 
-# ---------------------------------------------------------------- B3: reviewer ROI
-def b3_roi(rows, corpora, sec_per_field):
+# ------------------------------------------------------------------ reviewer ROI
+def reviewer_roi(rows, corpora, sec_per_field):
     CUT = 0.9  # operating point
     print("\n" + "=" * 72)
-    print("  B3 - REVIEWER-HOURS-SAVED ROI")
+    print("  REVIEWER-HOURS SAVED")
     print("=" * 72)
     print(f"  Model: reviewer auto-accepts a field when confidence >= {CUT:.2f} and")
     print(f"  hand-checks the rest. Verify time = {sec_per_field}s per field.\n")
@@ -216,12 +214,12 @@ def b3_roi(rows, corpora, sec_per_field):
         print(f"    ~= {saved_hrs / 1760:,.1f} person-years of review avoided")
 
 
-# ------------------------------------------------ B4: base-vs-enhanced Pareto
-def b4_pareto(rows):
+# -------------------------------------------------- base-vs-enhanced comparison
+def base_vs_enhanced(rows):
     CUT = 0.9
     ENH_COST, BASE_COST = 4.5, 2.0  # $ / 1,000 specimens
     print("\n" + "=" * 72)
-    print("  B4 - PER-FIELD COST/VALUE PARETO  (enhanced $4.5/1k vs base $2/1k)")
+    print("  PER-FIELD COST/VALUE  (enhanced $4.5/1k vs base $2/1k)")
     print("=" * 72)
     print(f"  Does the extra ${ENH_COST - BASE_COST:.1f}/1k (self-consistency + vision) "
           f"improve each field?\n")
@@ -256,11 +254,15 @@ if __name__ == "__main__":
     ap.add_argument("--gt-dir", default="transcription/data/gbif-ne-500")
     ap.add_argument("--sec-per-field", type=float, default=10.0,
                     help="seconds a reviewer spends verifying one field")
+    # Defaults are the corpus sizes in docs/cost-projection.md: new accessions in a
+    # year, and the full New England corpus.
+    ap.add_argument("--corpus", type=int, nargs="+", default=[200_000, 1_500_000],
+                    help="corpus sizes, in specimens, to report reviewer hours for")
     args = ap.parse_args()
     rows, n_spec = collect(args.gt_dir)
     print(f"\n  Loaded {n_spec} specimens from cache (zero API cost).")
-    b3_roi(rows, corpora=[168_000, 1_500_000], sec_per_field=args.sec_per_field)
-    b4_pareto(rows)
+    reviewer_roi(rows, corpora=args.corpus, sec_per_field=args.sec_per_field)
+    base_vs_enhanced(rows)
 
     # ---- ALL-5-FIELD rho summary (best metric, enhanced on) ----
     loc = collect_location(args.gt_dir)

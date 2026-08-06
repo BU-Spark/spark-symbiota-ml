@@ -7,7 +7,7 @@ Three measures:
 
   1. scientificName invented-name rate: non-UNKNOWN species that GBIF's backbone cannot
      match at all (matchType NONE). A non-existent binomial like "Euphrasia kurtkoviana"
-     is unambiguous fabrication. This is the exact failure that sank Sonnet 3.7.
+     is unambiguous fabrication.
   2. eventDate impossible-year rate: a parseable year outside 1600..now.
   3. ungrounded-value rate: non-UNKNOWN field value whose tokens do not appear in the
      Azure OCR of the same label (proxy for invented text; a vision model can legitimately
@@ -95,10 +95,27 @@ def grounded(value, ocr_words):
     return hit / len(toks) >= 0.5
 
 
+# The prompt does not pin the JSON key names, so models use equivalent Darwin Core
+# synonyms. Accept them, so a model is scored on its transcription rather than on
+# its key naming.
+ALIASES = {
+    "location":       ("location", "locality"),
+    "barcode":        ("barcode", "catalogNumber"),
+    "recordedBy":     ("recordedBy", "collector"),
+    "scientificName": ("scientificName", "taxon", "species"),
+    "eventDate":      ("eventDate", "date"),
+}
+
+
 def get_field(data, field):
+    v = ""
+    for key in ALIASES.get(field, (field,)):
+        if isinstance(data, dict) and data.get(key) not in (None, ""):
+            v = data[key]
+            break
     if field == "location":
-        return flatten_loc(data.get("location"))
-    return data.get(field, "")
+        return flatten_loc(v)
+    return v
 
 
 def score(name, get_data, occids, gts, matcher):
