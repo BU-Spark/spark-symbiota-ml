@@ -29,6 +29,144 @@ def encode_image_to_base64(image_path):
 
 DEFAULT_MODEL = "claude-sonnet-5"
 
+_TAXON_MATCHER = None
+
+
+def _taxon_matcher():
+    global _TAXON_MATCHER
+    if _TAXON_MATCHER is None:
+        try:
+            from transcription.confidence import GbifTaxonMatcher
+        except ImportError:
+            from confidence import GbifTaxonMatcher
+        _TAXON_MATCHER = GbifTaxonMatcher()
+    return _TAXON_MATCHER
+
+
+def apply_taxon_correction(data: dict) -> dict:
+    """Replace scientificName with GBIF's accepted species, in place.
+
+    Same step doc_intelligence.py applies to the Azure output. A label carrying a
+    synonym (Cypripedium pubescens) or a light misread is snapped onto the accepted
+    name (C. parviflorum); a name GBIF cannot match is left alone. Lossless -- the
+    original read is kept in verbatimScientificName. Idempotent.
+    """
+    raw = data.get("scientificName", "")
+    if not raw or str(raw).strip().upper() == "UNKNOWN":
+        return data
+    try:
+        corrected, match_type = _taxon_matcher().correct(raw)
+    except Exception:
+        return data  # lookup unavailable -> keep the model's read
+    data["_taxonMatchType"] = match_type
+    if corrected and corrected != raw:
+        data["verbatimScientificName"] = raw
+        data["scientificName"] = corrected
+    return data
+
+
+# Fields that can be scored with no OCR text and no second model call, and where the
+# resulting score actually separates right from wrong (rho +0.42 / +0.43 on the
+# 530-specimen set). The other three are omitted rather than shipped weak:
+# eventDate's validity check and barcode's digit-run check both collapse to a
+# constant without OCR words, and recordedBy's collector gazetteer barely moves
+# (rho +0.08, 91% vs 87% between bands). A score that carries no information is
+# worse than no score, because the UI presents it as one.
+FREE_CONFIDENCE_FIELDS = ("scientificName", "location")
+
+
+def build_free_confidence(data: dict) -> dict:
+    """Per-field confidence from references that cost nothing to consult.
+
+    scientificName -- GBIF taxonomic-backbone match type
+    location       -- count of recognized places in the offline gazetteer
+
+    Fields with no free signal are omitted, which envelope.py renders as
+    "confidence unavailable" rather than as a low score. Scores are uncalibrated:
+    transcription/calibration.json was fit on the Azure pipeline's distributions
+    and does not transfer.
+    """
+    try:
+        from transcription.confidence import (location_confidence,
+                                              scientificname_confidence)
+    except ImportError:
+        from confidence import location_confidence, scientificname_confidence
+
+    out = {}
+    for field in FREE_CONFIDENCE_FIELDS:
+        value = data.get(field, "")
+        try:
+            if field == "scientificName":
+                score = scientificname_confidence(value, None, _taxon_matcher(), None)
+            else:
+                score = location_confidence(value, None, None)
+        except Exception:
+            score = None
+        if score is not None:
+            out[field] = score
+    return out
+
+
+def _balanced_object(s):
+    """First balanced {...} in s, ignoring braces inside strings. None if absent."""
+    start = depth = None
+    in_str = esc = False
+    for i, ch in enumerate(s):
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch == "{":
+            if start is None:
+                start, depth = i, 0
+            depth += 1
+        elif ch == "}" and start is not None:
+            depth -= 1
+            if depth == 0:
+                return s[start:i + 1]
+    return None
+
+
+def extract_json(text):
+    """Parse the JSON object out of a model response, or None.
+
+    Models wrap the answer differently under the same prompt -- bare, inside a
+    ```json fence, or after a prose preamble -- so pull the object out wherever it
+    sits rather than assuming the response is bare JSON.
+    """
+    if not text:
+        return None
+    s = str(text).strip().removeprefix("<output_format>").removesuffix("</output_format>").strip()
+    for candidate in (s, _balanced_object(s)):
+        if not candidate:
+            continue
+        try:
+            return json.loads(candidate)
+        except Exception:
+            pass
+    return None
+
+
+def _correct_json(text: str) -> str:
+    # Apply the taxon correction and free confidence to a JSON response. Anything
+    # that does not parse is returned untouched so the caller's own error handling
+    # still sees it.
+    data = extract_json(text)
+    if not isinstance(data, dict):
+        return text
+    # Score the raw read BEFORE correcting: a FUZZY match means the model misread
+    # the name, which is exactly what confidence should flag. Correcting first would
+    # make every name match GBIF and the signal would saturate at 1.0.
+    data["confidence"] = build_free_confidence(data)
+    data = apply_taxon_correction(data)
+    return json.dumps(data, ensure_ascii=False)
+
 def run_claude_pipeline(image_path, model=DEFAULT_MODEL, return_usage=False):
     # `model` lets the same prompt run across models (nbs/model_run.py); the prompt
     # must stay identical for those runs to stay comparable.
@@ -46,7 +184,10 @@ def run_claude_pipeline(image_path, model=DEFAULT_MODEL, return_usage=False):
         try:
             message = client.messages.create(
                 model=model,
-                max_tokens=1024,
+                # Headroom for models that think before answering: max_tokens caps
+                # thinking and response text together, and 1024 truncated some
+                # replies mid-JSON. Only tokens actually generated are billed.
+                max_tokens=4096,
                 messages=[
                     {
                         "role": "user",
@@ -61,9 +202,8 @@ def run_claude_pipeline(image_path, model=DEFAULT_MODEL, return_usage=False):
                             },
                             {
                                 "type": "text",
-                                "text": "You are an expert in herbarium specimens and cursive handwriting. Perform OCR on this image and transcribe six items from the scanned herbarium specimen: the name of the specimen collector (recordedBy), the location the specimen was collected, the scientific name (genus and species, minimally) and/or any identifying information about the specimen, the event date the specimen was collected, the barcode associated with the specimen, and the institution code. Your response should contain only the output as a JSON object in plaintext. For the taxon name, only output recognized species within the identified genus. Only use the information available in the image or insert 'UNKNOWN' if there is none or if you are unsure. Your response should be formatted as such: "
-                                "<output_format>{{OUTPUT_FORMAT}}</output_format>. "
-                                "Here is the image you need to perform OCR on <input_image>{{encoded_image}}</input_image>"
+                                "text": "You are an expert in herbarium specimens and cursive handwriting. Perform OCR on this image and transcribe six items from the scanned herbarium specimen: the name of the specimen collector (recordedBy), the location the specimen was collected, the scientific name (genus and species, minimally) and/or any identifying information about the specimen, the event date the specimen was collected, the barcode associated with the specimen, and the institution code. Your response should contain only the output as a JSON object in plaintext. For the taxon name, only output recognized species within the identified genus. Only use the information available in the image or insert 'UNKNOWN' if there is none or if you are unsure. Use exactly these JSON keys. Your response should be formatted as such: "
+                                f"<output_format>{OUTPUT_FORMAT}</output_format>"
                             }
                         ],
                     }
@@ -72,6 +212,7 @@ def run_claude_pipeline(image_path, model=DEFAULT_MODEL, return_usage=False):
             # Newer models can return a thinking block before the text block, so
             # pick the first text block rather than content[0] blindly.
             result = next((b.text for b in message.content if b.type == "text"), "")
+            result = _correct_json(result)
             if return_usage:
                 u = message.usage
                 return result, {"input_tokens": u.input_tokens,

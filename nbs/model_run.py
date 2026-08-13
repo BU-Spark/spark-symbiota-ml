@@ -19,6 +19,7 @@ PAID: each call bills the Anthropic API. Cost scales with --n; see docs/cost-pro
 import argparse
 import json
 import os
+import random
 import sys
 import time
 from pathlib import Path
@@ -38,18 +39,21 @@ OUT_ROOT = "transcription/results/model_cache"
 # at its introductory rate through 2026-08-31; the standard rate is 3.00/15.00.
 PRICES = {
     "claude-opus-5":     (5.00, 25.00),
+    "claude-opus-4-8":   (5.00, 25.00),
+    "claude-opus-4-6":   (5.00, 25.00),
     "claude-sonnet-5":   (2.00, 10.00),
     "claude-sonnet-4-6": (3.00, 15.00),
     "claude-haiku-4-5":  (1.00,  5.00),
-    "claude-opus-4-8":   (5.00, 25.00),
 }
 
 
 def usable_occids():
     """Occids with an image, an Azure OCR cache entry, and taxon ground truth.
 
-    Same rule and same sort order as nbs/sonnet5_run.py, so slicing [:n] here
-    selects the same specimens that run did.
+    Returned in filename order. Do not slice this directly for a sample -- GBIF
+    assigns occurrence keys in batches per published dataset, so filename order
+    clusters by institution and the first N come from one herbarium with one label
+    format. Use sample_occids().
     """
     tax = set()
     for line in open(os.path.join(GT, "taxons.txt"), encoding="utf-8", errors="ignore"):
@@ -62,50 +66,25 @@ def usable_occids():
     return out
 
 
-def _balanced_object(s):
-    """First balanced {...} in s, ignoring braces inside strings. None if absent."""
-    start = depth = None
-    in_str = esc = False
-    for i, ch in enumerate(s):
-        if in_str:
-            if esc:
-                esc = False
-            elif ch == "\\":
-                esc = True
-            elif ch == '"':
-                in_str = False
-            continue
-        if ch == '"':
-            in_str = True
-        elif ch == "{":
-            if start is None:
-                start, depth = i, 0
-            depth += 1
-        elif ch == "}" and start is not None:
-            depth -= 1
-            if depth == 0:
-                return s[start:i + 1]
-    return None
+def sample_occids(occids, n, seed=0):
+    """A deterministic random sample, so the set spans institutions and label
+    formats rather than one published batch. Same seed gives the same specimens to
+    every model, which is what makes the runs comparable."""
+    if n >= len(occids):
+        return sorted(occids)
+    return sorted(random.Random(seed).sample(sorted(occids), n))
 
 
 def parse(raw):
-    """Extract the JSON object from a model response.
-
-    Models wrap the answer differently under the same prompt (bare, fenced, or
-    after a prose preamble), so pull the object out wherever it sits.
-    """
+    # Uses the pipeline's own extractor so the eval and the pipeline agree on what
+    # counts as a parseable response.
     if not raw:
         return None
-    s = raw.strip().removeprefix("<output_format>").removesuffix("</output_format>").strip()
-    for candidate in (s, _balanced_object(s)):
-        if not candidate:
-            continue
-        try:
-            return json.loads(candidate)
-        except Exception:
-            pass
+    data = cs.extract_json(raw)
+    if isinstance(data, dict):
+        return data
     # Keep enough raw text to diagnose (and to re-parse offline after a fix).
-    return {"_parse_error": raw[:2000]}
+    return {"_parse_error": str(raw)[:2000]}
 
 
 def main():
@@ -114,17 +93,21 @@ def main():
     ap.add_argument("--n", type=int, default=100)
     ap.add_argument("--out", default=None)
     ap.add_argument("--match-cache", default="transcription/results/sonnet5_cache",
-                    help="only run occids this cache already covers ('' to disable)")
+                    help="only run occids this cache already covers; 'none' to run "
+                         "every usable occid")
+    ap.add_argument("--seed", type=int, default=0,
+                    help="sampling seed; the same seed selects the same specimens "
+                         "for every model")
     args = ap.parse_args()
 
     out = args.out or os.path.join(OUT_ROOT, args.model)
     os.makedirs(out, exist_ok=True)
 
     occids = usable_occids()
-    if args.match_cache and os.path.isdir(args.match_cache):
+    if args.match_cache.strip().lower() not in ("", "none") and os.path.isdir(args.match_cache):
         have = {f[:-5] for f in os.listdir(args.match_cache) if f.endswith(".json")}
         occids = [o for o in occids if o in have]
-    occids = occids[: args.n]
+    occids = sample_occids(occids, args.n, seed=args.seed)
 
     todo = [o for o in occids if not os.path.exists(os.path.join(out, o + ".json"))]
     print(f"model {args.model}: target {len(occids)}, "

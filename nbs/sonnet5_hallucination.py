@@ -155,9 +155,14 @@ def score(name, get_data, occids, gts, matcher):
         # invented species
         sci = get_field(data, "scientificName")
         if not is_unknown(sci):
-            sci_nonunknown += 1
-            if matcher(sci) is None:  # GBIF matchType NONE
-                invented_sci += 1
+            # matcher() returns the GBIF matchType string; a genuine no-match is
+            # the string "NONE", while None means the lookup itself failed. Only
+            # the former is a fabrication, so lookup failures leave the denominator.
+            mt = matcher(sci)
+            if mt is not None:
+                sci_nonunknown += 1
+                if mt == "NONE":
+                    invented_sci += 1
         # impossible year
         ev = get_field(data, "eventDate")
         if not is_unknown(ev):

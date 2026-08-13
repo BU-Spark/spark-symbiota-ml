@@ -24,19 +24,20 @@ import sys
 sys.path.insert(0, "transcription")
 sys.path.insert(0, os.path.dirname(__file__))
 from confidence import GbifTaxonMatcher  # noqa: E402
-from sonnet5_hallucination import FIELDS, OCR, S5, load_gt, score  # noqa: E402
+from sonnet5_hallucination import FIELDS, OCR, get_field, is_unknown, load_gt, score  # noqa: E402
 
 MODEL_CACHE = "transcription/results/model_cache"
 
 
 def discover_runs():
+    # model_cache only. transcription/results/sonnet5_cache was produced by an
+    # earlier prompt and is not comparable with these runs; pass it explicitly
+    # with --runs if you want it anyway.
     runs = {}
-    if os.path.isdir(S5):
-        runs["claude-sonnet-5"] = S5
     if os.path.isdir(MODEL_CACHE):
         for d in sorted(os.listdir(MODEL_CACHE)):
             p = os.path.join(MODEL_CACHE, d)
-            if os.path.isdir(p) and d not in runs:
+            if os.path.isdir(p):
                 runs[d] = p
     return runs
 
@@ -45,14 +46,39 @@ def occids_in(d):
     return {f[:-5] for f in os.listdir(d) if f.endswith(".json")}
 
 
-def loader(d):
+def loader(d, matcher=None):
+    # With a matcher, snap scientificName onto GBIF's accepted species before
+    # scoring -- the same correction transcription/doc_intelligence.py applies to
+    # the Azure output. A label carrying a synonym (Cypripedium pubescens) is
+    # otherwise scored wrong against GBIF's current name (C. parviflorum).
     def get(occid):
-        return json.load(open(os.path.join(d, occid + ".json"), encoding="utf-8"))
+        rec = json.load(open(os.path.join(d, occid + ".json"), encoding="utf-8"))
+        if matcher and isinstance(rec, dict):
+            v = get_field(rec, "scientificName")
+            if not is_unknown(v):
+                fixed, _mt = matcher.correct(v)
+                if fixed and fixed != v:
+                    rec = dict(rec)
+                    rec["scientificName"] = fixed
+        return rec
     return get
 
 
-def mini(occid):
-    return json.load(open(os.path.join(OCR, occid + ".json"), encoding="utf-8"))["fields"]
+def mini_loader(matcher=None):
+    # The shipped Azure pipeline applies the same taxon correction, so the baseline
+    # gets it too -- otherwise a corrected model is being compared with an
+    # uncorrected baseline.
+    def get(occid):
+        rec = json.load(open(os.path.join(OCR, occid + ".json"), encoding="utf-8"))["fields"]
+        if matcher:
+            v = get_field(rec, "scientificName")
+            if not is_unknown(v):
+                fixed, _mt = matcher.correct(v)
+                if fixed and fixed != v:
+                    rec = dict(rec)
+                    rec["scientificName"] = fixed
+        return rec
+    return get
 
 
 def run_cost(d, occids):
@@ -86,6 +112,9 @@ def main():
     ap.add_argument("--runs", nargs="*", default=None, metavar="NAME=DIR")
     ap.add_argument("--no-baseline", action="store_true",
                     help="skip the shipped gpt-4o-mini (Azure OCR + LLM) baseline")
+    ap.add_argument("--raw", action="store_true",
+                    help="score the model's unmodified read, skipping the GBIF taxon "
+                         "correction the pipeline applies")
     args = ap.parse_args()
 
     if args.runs:
@@ -115,12 +144,20 @@ def main():
            "location": load_gt("localities.txt")}
     matcher = GbifTaxonMatcher()
 
+    # claude_sonnet.run_claude_pipeline applies the taxon correction itself, so
+    # correcting here scores what the pipeline ships. The correction is idempotent,
+    # so caches written before the pipeline change score identically.
+    corrector = None if args.raw else matcher
+    print("scientificName: " + ("raw model read (--raw)" if args.raw
+                                else "GBIF-corrected, as the pipeline ships it"))
+
     results = {}
     for name, d in runs.items():
-        results[name] = score(name, loader(d), occids, gts, matcher)
+        results[name] = score(name, loader(d, corrector), occids, gts, matcher)
     if not args.no_baseline:
         results["gpt-4o-mini (shipped)"] = score(
-            "gpt-4o-mini (shipped, Azure OCR + LLM)", mini, occids, gts, matcher)
+            "gpt-4o-mini (shipped, Azure OCR + LLM)", mini_loader(corrector),
+            occids, gts, matcher)
 
     # side-by-side accuracy summary
     names = list(results)
