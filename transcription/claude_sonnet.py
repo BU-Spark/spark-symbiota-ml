@@ -2,10 +2,14 @@ import anthropic
 import base64
 import os 
 import json
+from pathlib import Path
+
 from dotenv import load_dotenv
 from utils import image_utils
 
-load_dotenv()
+# Load from this file's directory, not the caller's cwd, so the pipeline works
+# whether it is run from transcription/ or imported from the repository root.
+load_dotenv(Path(__file__).parent / ".env")
 
 OUTPUT_FORMAT = '{"recordedBy": "", "location": "", "scientificName": "", "eventDate": "", "barcode": "", "institutionCode": ""}'
 
@@ -65,46 +69,113 @@ def apply_taxon_correction(data: dict) -> dict:
     return data
 
 
-# Fields that can be scored with no OCR text and no second model call, and where the
-# resulting score actually separates right from wrong (rho +0.42 / +0.43 on the
-# 530-specimen set). The other three are omitted rather than shipped weak:
-# eventDate's validity check and barcode's digit-run check both collapse to a
-# constant without OCR words, and recordedBy's collector gazetteer barely moves
-# (rho +0.08, 91% vs 87% between bands). A score that carries no information is
-# worse than no score, because the UI presents it as one.
-FREE_CONFIDENCE_FIELDS = ("scientificName", "location")
+# Scored from the GBIF backbone and the offline gazetteer; no extra API call.
+FREE_FIELDS = ("scientificName", "location")
+
+# No external authority to check against, so these need a second model's read.
+CHECKED_FIELDS = ("eventDate", "recordedBy")
+
+# barcode is scored only against the Azure pipeline's read. A second Claude model
+# is a weak checker here (rho +0.16); the Azure OCR words alone are useless (+0.00).
+AZURE_FIELDS = ("barcode",)
 
 
-def build_free_confidence(data: dict) -> dict:
-    """Per-field confidence from references that cost nothing to consult.
+_CALIBRATION = None
+_CALIBRATION_PATH = os.path.join(os.path.dirname(__file__), "calibration_anthropic.json")
 
-    scientificName -- GBIF taxonomic-backbone match type
-    location       -- count of recognized places in the offline gazetteer
 
-    Fields with no free signal are omitted, which envelope.py renders as
-    "confidence unavailable" rather than as a low score. Scores are uncalibrated:
-    transcription/calibration.json was fit on the Azure pipeline's distributions
-    and does not transfer.
+def _calibration():
+    # Separate from the Azure pipeline's calibration.json -- the same raw score
+    # means a different probability for a different pipeline. Fit by
+    # nbs/fit_calibration_anthropic.py; missing file means uncalibrated scores.
+    global _CALIBRATION
+    if _CALIBRATION is None:
+        try:
+            _CALIBRATION = json.load(open(_CALIBRATION_PATH, encoding="utf-8"))
+        except Exception:
+            _CALIBRATION = {}
+    return _CALIBRATION
+
+
+def _apply_calibration(field, score):
+    # Piecewise-linear between the fitted knots, clamped outside them. Monotonic,
+    # so ranking is unchanged -- only the numbers become probabilities.
+    knots = _calibration().get(field)
+    if score is None or not knots:
+        return score
+    if score <= knots[0][0]:
+        return knots[0][1]
+    if score >= knots[-1][0]:
+        return knots[-1][1]
+    for i in range(1, len(knots)):
+        x1, y1 = knots[i]
+        if score <= x1:
+            x0, y0 = knots[i - 1]
+            return round(y0 if x1 == x0 else y0 + (y1 - y0) * (score - x0) / (x1 - x0), 4)
+    return knots[-1][1]
+
+
+def build_confidence(data: dict, checker: dict = None, azure_read: dict = None,
+                     calibrate: bool = True) -> dict:
+    """Per-field confidence for the Anthropic pipeline.
+
+    Two optional independent reads of the same specimen, each unlocking the fields
+    it is measurably good at:
+      checker    -- a second Claude model. Adds eventDate and recordedBy.
+      azure_read -- the Azure pipeline's field dict. Adds barcode.
+    Each costs one extra call per specimen.
+
+    Fields with no usable signal are omitted; envelope.py renders a missing field
+    as "confidence unavailable" rather than as a low score.
+
+    calibration_anthropic.json maps the raw signal onto observed accuracy, so a
+    shipped 0.91 means roughly 91% likely correct. Pass calibrate=False for the raw
+    signal; nbs/fit_calibration_anthropic.py needs that to refit without compounding
+    the previous fit. Only scientificName has a fitted map so far.
     """
     try:
-        from transcription.confidence import (location_confidence,
+        from transcription.confidence import (barcode_confidence,
+                                              eventdate_confidence,
+                                              location_confidence,
+                                              recordedby_confidence,
                                               scientificname_confidence)
     except ImportError:
-        from confidence import location_confidence, scientificname_confidence
+        from confidence import (barcode_confidence, eventdate_confidence,
+                                location_confidence, recordedby_confidence,
+                                scientificname_confidence)
 
+    fields = list(FREE_FIELDS)
+    if checker:
+        fields += list(CHECKED_FIELDS)
+    if azure_read:
+        fields += list(AZURE_FIELDS)
     out = {}
-    for field in FREE_CONFIDENCE_FIELDS:
+    for field in fields:
         value = data.get(field, "")
+        other = (checker or {}).get(field)
         try:
             if field == "scientificName":
                 score = scientificname_confidence(value, None, _taxon_matcher(), None)
-            else:
+            elif field == "location":
                 score = location_confidence(value, None, None)
+            elif field == "eventDate":
+                score = eventdate_confidence(value, [], None, other)
+            elif field == "barcode":
+                score = barcode_confidence(value, [], [azure_read.get("barcode", "")])
+            else:
+                score = recordedby_confidence(value, None, other)
         except Exception:
             score = None
+        if calibrate:
+            score = _apply_calibration(field, score)
         if score is not None:
             out[field] = score
     return out
+
+
+def build_free_confidence(data: dict, calibrate: bool = True) -> dict:
+    """build_confidence with no extra reads: the two fields that cost nothing."""
+    return build_confidence(data, calibrate=calibrate)
 
 
 def _balanced_object(s):
@@ -153,24 +224,33 @@ def extract_json(text):
     return None
 
 
-def _correct_json(text: str) -> str:
-    # Apply the taxon correction and free confidence to a JSON response. Anything
-    # that does not parse is returned untouched so the caller's own error handling
-    # still sees it.
+def _correct_json(text: str, checker: dict = None) -> str:
+    # Unparseable input is returned untouched for the caller to handle.
     data = extract_json(text)
     if not isinstance(data, dict):
         return text
-    # Score the raw read BEFORE correcting: a FUZZY match means the model misread
-    # the name, which is exactly what confidence should flag. Correcting first would
-    # make every name match GBIF and the signal would saturate at 1.0.
-    data["confidence"] = build_free_confidence(data)
+    # Score before correcting: correcting first makes every name match GBIF and
+    # saturates the signal.
+    data["confidence"] = build_confidence(data, checker)
     data = apply_taxon_correction(data)
     return json.dumps(data, ensure_ascii=False)
 
-def run_claude_pipeline(image_path, model=DEFAULT_MODEL, return_usage=False):
-    # `model` lets the same prompt run across models (nbs/model_run.py); the prompt
-    # must stay identical for those runs to stay comparable.
+CHECKER_MODEL = "claude-sonnet-4-6"
+
+
+def run_claude_pipeline(image_path, model=DEFAULT_MODEL, return_usage=False,
+                        checker_model=None):
+    # `model` lets the same prompt run across models; keep the prompt identical or
+    # cached runs stop being comparable.
     # `return_usage` returns (text, usage) instead of text; usage is None on error.
+    # `checker_model` re-reads the image to score eventDate and recordedBy, at
+    # double the cost.
+    checker = None
+    if checker_model:
+        try:
+            checker = extract_json(run_claude_pipeline(image_path, checker_model))
+        except Exception:
+            checker = None
     if image_path.lower().endswith((".png", ".jpg", ".jpeg")):
         image_utils.resize_image(image_path)
         encoded_image = encode_image_to_base64(image_path)
@@ -184,9 +264,8 @@ def run_claude_pipeline(image_path, model=DEFAULT_MODEL, return_usage=False):
         try:
             message = client.messages.create(
                 model=model,
-                # Headroom for models that think before answering: max_tokens caps
-                # thinking and response text together, and 1024 truncated some
-                # replies mid-JSON. Only tokens actually generated are billed.
+                # Caps thinking and response text together; 1024 truncated some
+                # replies mid-JSON. Only generated tokens are billed.
                 max_tokens=4096,
                 messages=[
                     {
@@ -212,7 +291,7 @@ def run_claude_pipeline(image_path, model=DEFAULT_MODEL, return_usage=False):
             # Newer models can return a thinking block before the text block, so
             # pick the first text block rather than content[0] blindly.
             result = next((b.text for b in message.content if b.type == "text"), "")
-            result = _correct_json(result)
+            result = _correct_json(result, checker)
             if return_usage:
                 u = message.usage
                 return result, {"input_tokens": u.input_tokens,
@@ -221,8 +300,14 @@ def run_claude_pipeline(image_path, model=DEFAULT_MODEL, return_usage=False):
             return result
 
         except Exception as e:
-            err = f"An error occurred: {str(e)}"
+            # JSON, not a bare message, so a caller that json.loads the result
+            # handles the failure instead of raising. Detect it via "_error".
+            err = json.dumps({"_error": str(e)})
             return (err, None) if return_usage else err
+
+    # Not an image we can read; same shape as the error path.
+    err = json.dumps({"_error": f"unsupported file type: {image_path}"})
+    return (err, None) if return_usage else err
     
 if __name__ == "__main__":
     #image_path =  "/Users/mvoong/Desktop/spark-symbiota-ml/transcription/data/new-england-samples/output/1262197442.jpeg"

@@ -144,8 +144,7 @@ Maps exist for `scientificName`, `eventDate`, `barcode`, and `location`;
 `transcription/envelope.py` adapts the result to the Herbaria portal middleware's
 flat Darwin Core object plus a parallel `_confidence` map.
 
-- `location` ships as DWC `locality`, `barcode` as `catalogNumber` (that key still
-  needs confirming with the SWE team).
+- `location` ships as DWC `locality`, `barcode` as `catalogNumber`.
 - Only the five scored fields appear in `_confidence`. A field absent from the map
   means "confidence unavailable" and the UI shows no score bar — which is why
   scorers return `None` rather than 0.0 for an empty value. 0.0 would render as

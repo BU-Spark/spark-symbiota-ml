@@ -196,8 +196,9 @@ nbs/*
 !nbs/ocr_cache.py
 !nbs/self_consistency_cache.py
 !nbs/vision_agreement_test.py
-# Fits the shipped transcription/calibration.json
+# Fit the shipped calibration maps
 !nbs/fit_calibration.py
+!nbs/fit_calibration_anthropic.py
 # Evals cited in docs/azure-confidence-pipeline.md
 !nbs/confidence_eval.py
 !nbs/confidence_threshold_table.py
@@ -208,6 +209,9 @@ nbs/*
 !nbs/model_agreement.py
 !nbs/sonnet5_run.py
 !nbs/sonnet5_hallucination.py
+# Cross-pipeline
+!nbs/cross_pipeline.py
+!nbs/repeat_runs.py
 # Notebooks
 !nbs/*.ipynb
 # Eval image set + ground truth (large)
@@ -226,3 +230,4 @@ transcription/results/sonnet5_cache/
 transcription/results/model_cache/
 transcription/results/model_cache_oldprompt/
 transcription/results/model_cache_ypmonly/
+transcription/results/repeat_runs/

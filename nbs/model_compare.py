@@ -48,17 +48,23 @@ def occids_in(d):
 
 def loader(d, matcher=None):
     # With a matcher, snap scientificName onto GBIF's accepted species before
-    # scoring -- the same correction transcription/doc_intelligence.py applies to
-    # the Azure output. A label carrying a synonym (Cypripedium pubescens) is
-    # otherwise scored wrong against GBIF's current name (C. parviflorum).
+    # scoring, as both pipelines do. A label carrying a synonym is otherwise
+    # scored wrong against GBIF's current name.
     def get(occid):
         rec = json.load(open(os.path.join(d, occid + ".json"), encoding="utf-8"))
-        if matcher and isinstance(rec, dict):
+        if not isinstance(rec, dict):
+            return rec
+        rec = dict(rec)
+        # Caches written after the pipeline started correcting store the corrected
+        # name and keep the model's own read in verbatimScientificName. Restore it,
+        # or --raw silently scores the corrected value.
+        if rec.get("verbatimScientificName"):
+            rec["scientificName"] = rec["verbatimScientificName"]
+        if matcher:
             v = get_field(rec, "scientificName")
             if not is_unknown(v):
                 fixed, _mt = matcher.correct(v)
                 if fixed and fixed != v:
-                    rec = dict(rec)
                     rec["scientificName"] = fixed
         return rec
     return get

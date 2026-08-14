@@ -489,10 +489,8 @@ def _calibration():
 
 
 def _apply_calibration(field: str, score: Optional[float]) -> Optional[float]:
-    # Map a raw signal to a calibrated probability via the field's isotonic knots
-    # (piecewise-linear). only fixes the numbers
-    # so conf=0.8 means ~80% correct. Fields without a map (e.g. recordedBy, already
-    # well-calibrated) pass through unchanged.
+    # Piecewise-linear between the field's isotonic knots, so conf=0.8 means ~80%
+    # correct. Fields without a map pass through unchanged.
     if score is None:
         return None
     knots = _calibration().get(field)

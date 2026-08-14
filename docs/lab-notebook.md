@@ -183,7 +183,7 @@ evidence is partly circular: ground truth comes from GBIF and `scientificName`'s
 strongest signal is a GBIF backbone match. The planned hand-labelled non-GBIF set
 addresses the second.
 
-## 1.7 The shipped pipeline invents 10.5% of species names
+## 1.7 The shipped pipeline invents 11% of species names
 
 **Question.** How often does the Azure pipeline emit a scientific name that does not
 exist?
@@ -192,7 +192,7 @@ exist?
 extraction against the GBIF taxonomic backbone. A name GBIF cannot match at any rank
 is not a real name.
 
-**Result.** 15 of 143 names, **10.5%**, cannot be matched. Roughly one in ten
+**Result.** 15 of 133 names, **11.3%**, cannot be matched. Roughly one in nine
 scientific names the pipeline produces is a binomial that does not exist.
 
 The GBIF correction step in `doc_intelligence.py` does not fix these. It rewrites a
@@ -200,17 +200,16 @@ read onto GBIF's accepted species on an EXACT match (a valid name or a synonym) 
 FUZZY match (a close misread); a name GBIF cannot match at all passes through
 unchanged. So this rate survives correction and reaches the portal.
 
-For scale, image-native models reading the same 150 specimens invent between 0% and
-2.7% (see 2.4). This is a property of the OCR-plus-text-LLM approach rather than of
-the task: gpt-4o-mini never sees the sheet, so when Azure OCR garbles a handwritten
-name it has nothing to fall back on and completes the fragment into something
-plausible-looking.
+For scale, image-native models reading the same specimens invent 0.7–1.3% (see 2.4).
+This is a property of the OCR-plus-text-LLM approach rather than of the task:
+gpt-4o-mini never sees the sheet, so when Azure OCR garbles a handwritten name it has
+nothing to fall back on and completes the fragment into something plausible-looking.
 
-**Decision.** Two things follow. Invented names are cheaply detectable — GBIF
-already runs in the pipeline — so they can be flagged for review instead of shipped
-silently. And this is a strong argument for the image-native pipeline independent of
-the accuracy comparison: 0% invention against 10.5% is a larger difference than any
-accuracy gap measured between models.
+**Decision.** Two things follow. Invented names are cheaply detectable — GBIF already
+runs in the pipeline — so they can be flagged for review instead of shipped silently.
+And this is an argument for the image-native pipeline independent of the accuracy
+comparison: roughly 1% invention against 11% is a larger difference than any accuracy
+gap measured between models.
 
 ---
 
@@ -266,76 +265,76 @@ The lineup started at the cheap end (Opus 4.6, Sonnet 4.6, Haiku 4.5) and was
 extended upward with Sonnet 5 and Opus 4.8 to test whether the premium tier earns
 its price. Total spend for all five: $7.63.
 
+**A sampling bug invalidated the first attempt.** Specimens were selected by taking
+the first N in filename order. GBIF assigns occurrence keys in batches per published
+dataset, so filename order clusters by institution and the first 150 turned out to be
+149 sheets from one museum, all sharing one catalog-number format. Barcode accuracy
+read 96% on that set and 56% across the corpus. `model_run.py` now samples with a
+seed, and every number below is from the re-run.
+
 **Result.** Per-field accuracy, mean across the five fields, and measured cost. Both
-pipelines apply the GBIF taxon correction described in 2.3, so these are the numbers
-each ships:
+pipelines apply the GBIF taxon correction from 2.3, so these are the numbers each
+ships:
 
 | Model | scientificName | eventDate | recordedBy | barcode | location | mean | $/1,000 |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| Opus 4.8 | 88.7% | 88.6% | 89.7% | 92.7% | 89.2% | **89.8%** | $22.20 |
-| Opus 4.6 | 88.7% | 81.3% | 87.8% | 93.3% | 95.4% | **89.3%** | $10.90 |
-| Sonnet 4.6 | 88.7% | 84.0% | 88.4% | 94.7% | 87.7% | **88.7%** | $6.66 |
-| Sonnet 5 | 85.3% | 90.0% | 84.6% | 93.3% | 89.2% | **88.5%** | $9.78 |
-| gpt-4o-mini (shipped Azure) | 76.2% | 86.4% | 87.0% | 95.9% | 44.3% | **78.0%** | — |
-| Haiku 4.5 | 56.2% | 31.0% | 77.0% | 90.0% | 59.4% | **62.7%** | $2.20 |
+| Opus 4.8 | 84.7% | 87.2% | 83.3% | 90.0% | 81.6% | **85.3%** | $25.81 |
+| Sonnet 5 | 85.3% | 87.2% | 75.0% | 91.3% | 85.6% | **84.9%** | $11.34 |
+| Opus 4.6 | 85.3% | 81.8% | 81.8% | 56.6% | 87.7% | **78.6%** | $10.78 |
+| Sonnet 4.6 | 80.0% | 83.0% | 79.2% | 53.7% | 79.6% | **75.1%** | $6.56 |
+| gpt-4o-mini (shipped Azure) | 71.4% | 78.9% | 75.3% | 90.5% | 54.5% | **74.1%** | $4.50 |
+| Haiku 4.5 | 54.9% | 39.1% | 66.4% | 50.9% | 34.0% | **49.1%** | $2.17 |
 
-No model produced an impossible collection year. Fabrication rates differ sharply
-between models and are covered in 2.4.
-
-Zero parse or API errors across all 750 calls, versus 3-of-3 parse failures on a
-pre-fix Sonnet 4.6 probe and 24 errors in a pre-fix Opus 5 run.
+No model produced an impossible collection year. Fabrication rates are in 2.4. Zero
+parse or API errors across 750 calls, against 3-of-3 parse failures on a pre-fix
+Sonnet 4.6 probe and 24 errors in a pre-fix Opus 5 run.
 
 **Reading the numbers.**
 
-*Cost rises 3.3x while accuracy moves 1.1 points.* From Sonnet 4.6 ($6.66, 88.7%) to
-Opus 4.8 ($22.20, 89.8%) is more than triple the money for a gap well inside noise —
-one standard error on a per-field proportion near 89% is about 2.6 points at n=150.
-The four viable models span 88.5–89.8%. On this task they are, statistically, the
-same model at very different prices.
+*`barcode` splits the field by generation.* Opus 4.8 and Sonnet 5 read 90%; every
+4.6-era model reads about 55%. A 35-point gap, and it is the single biggest driver of
+the ranking. The uniform Yale set hid it entirely, because one institution means one
+format. The wider corpus is 470 prefixed numbers (`YU.037310`), 58 bare digits, and 2
+other — and a bare number is easy to confuse with the accession numbers, elevations
+and plot IDs also printed on a sheet.
 
-*Newer is not better here.* Sonnet 5 scores below Sonnet 4.6 (88.5% vs 88.7%) while
-costing 47% more, and its introductory pricing ends 2026-08-31. Opus 4.8 barely
-separates from Opus 4.6 at double the price. Nothing in the current generation earns
-its premium for this workload.
+*Sonnet 5 is the value pick* at $11.34 per 1,000. It is level with Opus 4.8's 85.3%
+at less than half the price; the 0.4-point gap is well inside noise, where one
+standard error on a per-field proportion near 85% is about 2.9 points at n=150.
 
-*Haiku 4.5 is not viable.* `eventDate` at 31% is the collapse — it cannot read
-handwritten dates. It also abstains far more (20 `UNKNOWN` scientific names against
-zero for the others), so even 62.7% is computed on an easier subset than it looks.
+*The cheaper tier is not close.* Opus 4.6 and Sonnet 4.6 sit 6 to 10 points behind,
+so the earlier conclusion that price buys nothing was an artifact of the biased
+sample. Opus 4.6 in particular is now hard to justify: worse than Sonnet 5 at
+roughly the same cost.
 
-*Per-field leaders differ*, which matters if one field dominates the use case:
-Sonnet 5 leads `eventDate` (90.0%), Opus 4.6 leads `location` (95.4%), Sonnet 4.6
-leads `barcode` (94.7%), Opus 4.8 leads `recordedBy` (89.7%). The three 4.6/4.8-era
-models tie exactly on `scientificName` — see 2.3.
+*Haiku 4.5 is not viable.* `eventDate` at 39.1% is the collapse — it cannot read
+handwritten dates — and it abstains far more than the others, so even 49.1% is
+computed on an easier subset than it looks.
 
-*Every viable model beats the shipped Azure pipeline by ~11 points*, driven by
-`location` (87.7–95.4% vs 44.3%) and `scientificName` (88.7% vs 76.2%). Azure stays
-ahead on `barcode` and competitive on `eventDate`, the fields its OCR-grounding and
-self-consistency signals serve best.
+*Every viable model beats the shipped Azure pipeline*, by 11 points for Sonnet 5,
+driven almost entirely by `location` (85.6% vs 54.5%) and `scientificName` (85.3% vs
+71.4%). Azure holds its own on `barcode` and `eventDate`, the fields its OCR grounding
+and self-consistency serve best.
 
-**Decision.** **Sonnet 4.6 is the pick** at $6.66 per 1,000: statistically
-indistinguishable from models costing up to 3.3x more. Opus 4.6 is the upgrade if
-`location` specifically matters, and that is the one gap approaching significance —
-though it is measured on n≈65. Haiku 4.5 is ruled out. Nothing reached the 92% mean
-that would have justified paying for the premium tier.
+**Decision.** **Sonnet 5**, at $11.34 per 1,000 for extraction. Opus 4.8 costs 2.3x
+more for 0.4 points. Nothing reached the 92% mean that would have justified the
+premium tier.
 
 **Caveats.**
 
-- `location` is scored on n≈65, not 150, because ground-truth locality coverage is
-  lower than for the other fields. Every `location` conclusion is on a quarter of
-  the sample.
-- The cost column is **extraction only**. The Anthropic pipeline has no confidence
-  scoring, so it is not yet a like-for-like replacement for the Azure pipeline,
-  whose $4.50 per 1,000 buys six calls including the confidence signals. Comparing
-  $6.66 against $4.50 understates what an Anthropic pipeline would cost once it
-  produces a confidence score.
-- Sonnet 5's price is introductory and rises to roughly $14.70 per 1,000 after
-  2026-08-31, which weakens its case further.
+- `location` ground truth covers only about two-thirds of specimens, so its column
+  rests on a smaller sample than the others.
+- The cost column is extraction only. Confidence scoring is priced separately in 2.5
+  and 2.6; the Azure figure already includes its own.
+- Sonnet 5's price is introductory and rises to roughly $17.51 per 1,000 after
+  2026-08-31.
 
 ## 2.3 `scientificName` is capped by taxonomy, not by model quality
 
-**Question.** Opus 4.6, Opus 4.8, and Sonnet 4.6 all scored *exactly* 72.7% on
-`scientificName`. Identical accuracy across different models suggests a shared
-ceiling rather than coincidence. What is it?
+**Question.** `scientificName` is the weakest field for every model, and the GBIF
+correction lifts every one of them by almost exactly the same 16 points. A gain that
+uniform across models of very different strength points at a shared ceiling rather
+than at model quality. What is it?
 
 **Method.** Compare the sets of specimens each model gets wrong, and inspect the
 cases every model fails.
@@ -360,26 +359,25 @@ in `verbatimScientificName`, so nothing is lost.
 
 | Model | raw read | corrected | gain | mean before → after |
 |---|---:|---:|---:|---|
-| Opus 4.8 | 72.7% | 88.7% | +16.0 | 86.6% → **89.8%** |
-| Opus 4.6 | 72.7% | 88.7% | +16.0 | 86.1% → **89.3%** |
-| Sonnet 4.6 | 72.7% | 88.7% | +16.0 | 85.5% → **88.7%** |
-| Sonnet 5 | 72.0% | 85.3% | +13.3 | 85.8% → **88.5%** |
-| Haiku 4.5 | 46.9% | 56.2% | +9.2 | 60.9% → **62.7%** |
-| gpt-4o-mini (Azure) | 61.5% | 76.2% | +14.7 | 75.0% → **78.0%** |
+| Sonnet 5 | 69.3% | 85.3% | +16.0 | 81.7% → **84.9%** |
+| Opus 4.6 | 69.3% | 85.3% | +16.0 | 75.4% → **78.6%** |
+| Opus 4.8 | 68.7% | 84.7% | +16.0 | 82.1% → **85.3%** |
+| Sonnet 4.6 | 64.0% | 80.0% | +16.0 | 71.9% → **75.1%** |
+| gpt-4o-mini (Azure) | 58.6% | 71.4% | +12.8 | 71.6% → **74.1%** |
+| Haiku 4.5 | 46.6% | 54.9% | +8.3 | 47.4% → **49.1%** |
 
 **Decision.** A free correction step is worth more than any amount of model spend:
-+16 points on `scientificName` and +3.2 on the mean for Sonnet 4.6, against +1.1
-points for paying 3.3x more for Opus 4.8. `transcription/doc_intelligence.py`
-already applied it to the Azure output; it is now also applied by
-`claude_sonnet.apply_taxon_correction()` inside `run_claude_pipeline`, so both
-pipelines correct. The correction is idempotent, and `nbs/model_compare.py --raw`
-scores the model's unmodified read for comparison.
++16 points on `scientificName` and +3.2 on the mean, against +0.4 points for paying
+2.3x more for Opus 4.8. `transcription/doc_intelligence.py` already applied it to the
+Azure output; `claude_sonnet.apply_taxon_correction()` now applies it inside
+`run_claude_pipeline`, so both pipelines correct. It is idempotent, and
+`nbs/model_compare.py --raw` scores the model's unmodified read for comparison.
 
-Note the three 4.6/4.8-generation models converge on exactly 88.7% after correction
-as well — a second ceiling, this time from labels GBIF cannot resolve at all.
+Every model gains almost exactly +16 points, which is what a shared ceiling looks
+like: the correction is resolving the same set of renamed species regardless of which
+model read the label.
 
-**Best result achieved: 89.8%** (Opus 4.8). Nothing reached 92%, and the gap between
-the cheapest viable model and the most expensive stays close to noise.
+**Best result: 85.3%** (Opus 4.8). Nothing reached 92%.
 
 ## 2.4 Hallucination rate
 
@@ -405,11 +403,12 @@ name GBIF cannot match is exactly the name correction cannot fix.
 
 | Model | correct | near miss | far miss | **invented** |
 |---|---:|---:|---:|---:|
-| Opus 4.8 | 72.7% | 15.3% | 12.0% | **0.0%** |
-| Sonnet 4.6 | 72.7% | 15.3% | 12.0% | **0.0%** |
-| Opus 4.6 | 72.7% | 14.7% | 12.0% | **0.7%** |
-| Sonnet 5 | 72.0% | 14.7% | 12.7% | **2.7%** |
-| Haiku 4.5 | 46.9% | 20.0% | 24.6% | **10.8%** |
+| Sonnet 5 | 85.3% | 11.3% | 2.0% | **1.3%** |
+| Opus 4.6 | 85.3% | 11.3% | 2.7% | **0.7%** |
+| Opus 4.8 | 84.7% | 11.3% | 3.3% | **0.7%** |
+| Sonnet 4.6 | 64.0% | 23.3% | 11.3% | **1.3%** |
+| Haiku 4.5 | 54.9% | 17.3% | 20.3% | **7.5%** |
+| gpt-4o-mini (shipped Azure) | — | — | — | **11.3%** |
 
 Examples of invented names, all from Haiku 4.5:
 
@@ -419,26 +418,27 @@ Examples of invented names, all from Haiku 4.5:
 | `Impala Glochoma` | `Glechoma hederacea` |
 | `Antennaria felixGreene` | `Antennaria parlinii` |
 
-`barcode` and `recordedBy` show no invented values for any model. Barcode errors are
-overwhelmingly near misses — a digit or two misread (3.3–8.7%) with far misses at
-0–3.3%. `recordedBy` errors are almost entirely far misses (10.3–15.4%, and 23.0%
-for Haiku 4.5), meaning a wrong collector is usually a different person rather than
-a misspelling. No model produced an impossible collection year.
+No model invented a barcode or a collector, and none produced an impossible year.
+`barcode` errors are misreads and misidentified numbers; `recordedBy` errors are
+mostly a different person rather than a misspelling.
 
-**Reading the numbers.** About 15% of every good model's `scientificName` answers are
+**Reading the numbers.** About 11% of the good models' `scientificName` answers are
 near misses — right genus, wrong species. That is transcription difficulty on
-handwritten cursive, not invention, and it is the dominant error mode.
+handwritten cursive, not invention, and it is the dominant error mode throughout.
 
-Fabrication separates the models where accuracy does not. Opus 4.8 and Sonnet 4.6
-invent nothing. Sonnet 5 invents 2.7% while the cheaper Sonnet 4.6 invents 0%,
-adding to the case against it. Haiku 4.5 at 10.8% is producing names that do not
-exist roughly once every nine specimens.
+The three strong models invent 0.7–1.3%. Haiku 4.5 invents 7.5%, roughly one name in
+thirteen that does not exist.
+
+**The shipped Azure pipeline invents 11.3%** — worse than every Claude model tested,
+including Haiku. Section 1.7 covers why: gpt-4o-mini never sees the sheet, so when
+Azure's OCR garbles a handwritten name it completes the fragment into something
+plausible with nothing to check against.
 
 **Decision.** Fabrication is the third independent reason to rule out Haiku 4.5,
-after its 31% `eventDate` accuracy and its 62.7% mean. Among the viable models it
-favours Sonnet 4.6 and Opus 4.8, both at zero. Since invention is detectable — a
-name GBIF cannot match is fabricated by definition — it can also be caught
-automatically and routed to review rather than shipped.
+after its 39.1% `eventDate` and its 49.1% mean. Among the viable models the
+differences are small enough not to drive the choice. Since invention is detectable —
+a name GBIF cannot match is fabricated by definition — it can be flagged
+automatically rather than shipped, on either pipeline.
 
 ## 2.5 Cross-model agreement as a confidence signal
 
@@ -497,15 +497,25 @@ It gets self-consistency at K=3 plus a vision read for +$2.50 because its expens
 step, the OCR, happens once and each additional read is a text-only call. An
 image-native pipeline has no cheap second opinion available.
 
-**Decision.** Cross-model agreement works, and on `eventDate` it is the best signal
-measured anywhere in this project. It is not adopted as a default because it costs
-164% more than the extraction it protects. Deferred pending two cheaper routes:
-checking selectively rather than on every specimen, and cross-pipeline reuse where
-Azure OCR has already been paid for. The free signals in 2.6 are adopted instead.
+**Adopted.** Re-measured on the representative sample with Sonnet 5 as the shipped
+model, the checker choice matters less than expected:
 
-**Caveat.** The good models agree 93–95% on `scientificName` and `location`, leaving
-8–10 disagreements at n=150, so those cells are directional. `eventDate` rests on
-about 18 disagreements.
+| checker | `eventDate` | `recordedBy` | checker cost / 1,000 |
+|---|---:|---:|---:|
+| Opus 4.8 | +0.624 | — | $25.81 |
+| **Sonnet 4.6** | **+0.620** | **+0.406** | **$6.56** |
+| Opus 4.6 | +0.500 | +0.508 | $10.78 |
+| Haiku 4.5 | +0.250 | +0.259 | $2.17 |
+
+Sonnet 4.6 matches Opus 4.8 on `eventDate` at a quarter of the price, and both beat
+the Azure pipeline's own signals for those fields (+0.363 and +0.394).
+
+`claude_sonnet.run_claude_pipeline(..., checker_model=...)` runs the second read and
+scores `eventDate` and `recordedBy` from it. It is off by default: the checker
+doubles extraction cost, from $11.34 to $17.90 per 1,000 with Sonnet 4.6.
+
+**Caveat.** The good models agree 82–93% on these fields, so each cell rests on
+10–25 disagreements at n=150. Directional, not tight.
 
 ## 2.6 A free confidence layer for the Anthropic pipeline
 
@@ -547,5 +557,48 @@ bar, whereas a low-information score would be displayed as though it meant somet
 Scores are uncalibrated: `transcription/calibration.json` was fit on the Azure
 pipeline's score distributions and does not transfer.
 
-This closes part of the gap that kept the Anthropic pipeline from being a drop-in
-replacement. `eventDate`, `recordedBy`, and `barcode` remain unscored.
+With the two optional reads below, the pipeline scores **all five fields**.
+
+| field | signal | extra call |
+|---|---|---|
+| `scientificName` | GBIF match type | none |
+| `location` | place gazetteer | none |
+| `eventDate` | agreement with a checker model | Claude checker |
+| `recordedBy` | collector gazetteer + checker agreement | Claude checker |
+| `barcode` | agreement with the Azure pipeline's read | Azure OCR + 1 gpt-4o-mini |
+
+`barcode` was the last gap, and only one source works. Measured against Sonnet 5's
+reads:
+
+| source | rho | marginal cost / 1,000 |
+|---|---:|---:|
+| **Azure OCR + one gpt-4o-mini call** | **+0.546** | **$2.00** |
+| Opus 4.8 as a Claude checker | +0.393 | $25.81 |
+| Sonnet 4.6 checker (already paid for) | +0.158 | $0 |
+| Azure OCR words alone | +0.001 | $1.50 |
+
+The Azure route is both cheapest and strongest, and it beats the Azure pipeline's
+own barcode signal (+0.409). Two things about it are easy to get wrong:
+
+*The OCR words contribute nothing.* `barcode_confidence` falls back to a
+longest-digit-run heuristic when given words but no second read, and that scores
++0.001 for Sonnet 5 and −0.206 for Sonnet 4.6 — worse than useless. The signal is
+agreement with gpt-4o-mini's extraction, so the OpenAI call is the part that matters,
+not the OCR.
+
+*One call is enough.* Azure's five self-consistency samples score no better than its
+single read (+0.465 vs +0.546 for Sonnet 5), so there is no reason to pay for five.
+
+*The signal is weaker for a better model.* Sonnet 4.6 scores +0.802 here against
+Sonnet 5's +0.546, because Sonnet 4.6 reads barcodes correctly only 53.7% of the time
+and there is more wrongness to detect. The same inversion shows up in cross-model
+agreement: a weak primary makes any checker look strong.
+
+**Full confidence stack**, Sonnet 5 as the shipped model:
+
+| component | $/1,000 |
+|---|---:|
+| Sonnet 5 extraction | $11.34 |
+| Sonnet 4.6 checker (`eventDate`, `recordedBy`) | $6.56 |
+| Azure OCR + 1 gpt-4o-mini (`barcode`) | $2.00 |
+| **all five fields scored** | **$19.90** |
