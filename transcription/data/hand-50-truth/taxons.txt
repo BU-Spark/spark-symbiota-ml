@@ -1,0 +1,40 @@
+1038927246: Betula populifolia Marsh.
+1228515326: Carex ordorata
+1257652416: Juncus brevicaudatus (Engelm.) Buch.
+1269713236: Carex grayii var. hispidula
+1503223098: UNKNOWN
+176877226: Antennaria plantaginifolia
+1843879327: Aquilegia canadensis
+1978473739: Arisaema trifolium (L.) Tors.
+1986877838: Aristida basiramea Engelm. Ex Vasey
+1990226677: Potamogeton vaseyi J.W. Robbins
+1994947868: Oedogonium echinospermum A. Br.
+1998448982: Jamesoniella autumnalis (DC.) Steph.
+1998570423: Comandra umbellata (L.) Hutt.
+1998648901: Cornus alternifolia L. f.
+1999050003: Gabzum triftorum Michv
+1999076084: Sempervivum tectorum L.
+1999198858: Goodyera repens var. ophioides
+2005074090: Chondrus crispus Stackhouse
+2005549152: UNKNOWN
+2027283959: Polysiphonia fastigiata Grev.
+2242400886: Scorzoneroides autumnalis
+2252191122: S. subsecundum
+2266052969: Dicranum scoparium Hedw.
+2269117437: Osmunda regalis var. spectabilis (Willd.) Gray
+2270486485: Carex umbellata Schkuhr
+2273434178: Polygonum pennsylvanicum L.
+2516354370: Jasminum multiflorum (Burm.f.) Andr.
+2573059690: UNKNOWN
+2575149341: Viola sororia Willd.
+2610098749: Kalmia angustifolia
+2631651304: Viburnum acerifolium L.
+2807529673: Drosera rotundifolia L.
+2859199116: Plantago cancerlata L.
+2989908113: Vaccinium Vitis-Idaea var. minus
+3340046869: Phalaris arundinacea L.
+3341233406: Ophioglossum vulgatum L.
+3406855364: T. aureum
+3408894109: UNKNOWN
+3416701003: Toxicodendron vernix (L.) Kuntze
+3469898114: Ilex glabra (L.) Gray

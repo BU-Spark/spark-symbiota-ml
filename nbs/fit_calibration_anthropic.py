@@ -29,7 +29,7 @@ import claude_sonnet as cs  # noqa: E402
 from confidence import GbifTaxonMatcher, _tokenize  # noqa: E402
 from sonnet5_hallucination import correct, get_field, is_unknown, load_gt  # noqa: E402
 
-GT_DIR = "transcription/data/gbif-ne-500"
+GT_DIR = os.environ.get("HERBARIA_GT_DIR", "transcription/data/gbif-ne-500")
 OCR = "transcription/results/ocr_cache/azure"
 OUT = "transcription/calibration_anthropic.json"
 
@@ -134,9 +134,11 @@ def _read(path, occid):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--cache", default="transcription/results/model_cache/claude-sonnet-4-6",
+    # Defaults follow the pipeline's model roles. Swapping them fits a map for a
+    # configuration that never runs.
+    ap.add_argument("--cache", default=f"transcription/results/model_cache/{cs.DEFAULT_MODEL}",
                     help="primary model cache")
-    ap.add_argument("--checker", default="transcription/results/model_cache/claude-sonnet-5",
+    ap.add_argument("--checker", default=f"transcription/results/model_cache/{cs.CHECKER_MODEL}",
                     help="checker model cache; supplies eventDate and recordedBy")
     ap.add_argument("--min-count", type=int, default=15)
     ap.add_argument("--holdout", type=float, default=0.3,

@@ -26,7 +26,8 @@ from difflib import SequenceMatcher
 sys.path.insert(0, "transcription")
 from confidence import GbifTaxonMatcher, _tokenize, _digits, _event_year  # noqa: E402
 
-GT = "transcription/data/gbif-ne-500"
+# HERBARIA_GT_DIR scores against a different truth set, e.g. hand labels.
+GT = os.environ.get("HERBARIA_GT_DIR", "transcription/data/gbif-ne-500")
 OCR = "transcription/results/ocr_cache/azure"
 S5 = "transcription/results/sonnet5_cache"
 FIELDS = ["scientificName", "eventDate", "recordedBy", "barcode", "location"]

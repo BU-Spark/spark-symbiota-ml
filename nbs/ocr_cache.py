@@ -98,7 +98,7 @@ def _tesseract(image_path: str):
 BUILDERS = {"azure": _azure, "google": _google, "tesseract": _tesseract}
 
 
-def build(pipeline: str, image_dir: str):
+def build(pipeline: str, image_dir: str, only: set = None):
     sys.path.insert(0, "transcription")
     builder = BUILDERS[pipeline]
     out_dir = os.path.join(CACHE_ROOT, pipeline)
@@ -108,6 +108,8 @@ def build(pipeline: str, image_dir: str):
         if not fname.lower().endswith((".png", ".jpg", ".jpeg")):
             continue
         occid = os.path.splitext(fname)[0]
+        if only is not None and occid not in only:
+            continue
         out_path = os.path.join(out_dir, f"{occid}.json")
         if os.path.exists(out_path):
             print(f"  skip cached {occid}")
@@ -132,5 +134,12 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--pipeline", choices=list(BUILDERS), default="azure")
     ap.add_argument("--image-dir", default=SAMPLE_DIR)
+    ap.add_argument("--occids-from", default=None,
+                    help="cache dir whose occids to mirror, so a new pipeline is "
+                         "built on the same specimens an existing run covers")
     args = ap.parse_args()
-    build(args.pipeline, args.image_dir)
+    only = None
+    if args.occids_from:
+        only = {f[:-5] for f in os.listdir(args.occids_from) if f.endswith(".json")}
+        print(f"restricted to {len(only)} occids from {args.occids_from}")
+    build(args.pipeline, args.image_dir, only)

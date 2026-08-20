@@ -82,15 +82,23 @@ def main():
         "transcription/results/ocr_cache/azure",
         "transcription/results/sonnet5_cache",
     ])
+    ap.add_argument("--occid-file",
+                    help="file of occids, one per line (from nbs/sample_from_export.py); "
+                         "overrides --cache-dirs")
     ap.add_argument("--skip-images", action="store_true",
                     help="write ground truth only; don't download the scans")
     ap.add_argument("--workers", type=int, default=8)
     args = ap.parse_args()
 
-    occids = occids_from_caches(*args.cache_dirs)
+    if args.occid_file:
+        occids = [l.strip() for l in open(args.occid_file, encoding="utf-8") if l.strip()]
+        src = args.occid_file
+    else:
+        occids = occids_from_caches(*args.cache_dirs)
+        src = str(args.cache_dirs)
     if not occids:
-        raise SystemExit(f"no occids found in {args.cache_dirs}")
-    print(f"{len(occids)} occids from caches; fetching GBIF records...", flush=True)
+        raise SystemExit(f"no occids found in {src}")
+    print(f"{len(occids)} occids from {src}; fetching GBIF records...", flush=True)
 
     os.makedirs(args.out_dir, exist_ok=True)
     records = fetch_records(occids, args.workers)

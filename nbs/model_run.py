@@ -30,7 +30,7 @@ sys.path.insert(0, "transcription")
 load_dotenv(Path("transcription/.env"))
 import claude_sonnet as cs  # noqa: E402
 
-GT = "transcription/data/gbif-ne-500"
+GT = os.environ.get("HERBARIA_GT_DIR", "transcription/data/gbif-ne-500")
 OCR = "transcription/results/ocr_cache/azure"
 OUT_ROOT = "transcription/results/model_cache"
 

@@ -16,9 +16,18 @@ load_dotenv(dotenv_path=env_path)
 
 # Works both as a script (cwd=transcription) and as a package import
 try:
-    from transcription.confidence import build_confidence, detail_enabled
+    from transcription.confidence import build_confidence, detail_enabled, GbifTaxonMatcher
 except ImportError:
-    from confidence import build_confidence, detail_enabled
+    from confidence import build_confidence, detail_enabled, GbifTaxonMatcher
+
+_TAXON_MATCHER = None
+
+
+def _taxon_matcher():
+    global _TAXON_MATCHER
+    if _TAXON_MATCHER is None:
+        _TAXON_MATCHER = GbifTaxonMatcher()
+    return _TAXON_MATCHER
 
 # code adapted from spring 2024 ml team 
 openai.api_key = os.environ["OPENAI_API_KEY"] 
@@ -202,7 +211,24 @@ def run_google_vision_pipeline(image_path: str):
             # purely from the OCR words (coverage / grounding).
             result.pop("confidence", None)
             result["image_path"] = image_path
-            result["confidence"] = build_confidence(result, words, detail=detail_enabled())
+
+            matcher = _taxon_matcher()
+            # Scored on the raw read, before the name is snapped to GBIF's
+            # accepted species, so a FUZZY read still scores low.
+            result["confidence"] = build_confidence(
+                result, words, taxon_matcher=matcher, detail=detail_enabled()
+            )
+
+            # Snap to GBIF's accepted species, keeping the verbatim read and match
+            # type. No vision tiebreak -- this pipeline has no second read.
+            raw_sci = result.get("scientificName", "")
+            if raw_sci and str(raw_sci).strip().upper() != "UNKNOWN":
+                corrected, match_type = matcher.correct(raw_sci)
+                result["_taxonMatchType"] = match_type
+                if corrected and corrected != raw_sci:
+                    result["verbatimScientificName"] = raw_sci
+                    result["scientificName"] = corrected
+
             return json.dumps(result)
 
         except Exception as e:

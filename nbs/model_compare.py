@@ -70,12 +70,11 @@ def loader(d, matcher=None):
     return get
 
 
-def mini_loader(matcher=None):
-    # The shipped Azure pipeline applies the same taxon correction, so the baseline
-    # gets it too -- otherwise a corrected model is being compared with an
-    # uncorrected baseline.
+def ocr_loader(d, matcher=None):
+    # Reads an nbs/ocr_cache.py record. Applies the taxon correction the pipelines
+    # ship, so a corrected model is not compared with an uncorrected one.
     def get(occid):
-        rec = json.load(open(os.path.join(OCR, occid + ".json"), encoding="utf-8"))["fields"]
+        rec = json.load(open(os.path.join(d, occid + ".json"), encoding="utf-8"))["fields"]
         if matcher:
             v = get_field(rec, "scientificName")
             if not is_unknown(v):
@@ -85,6 +84,10 @@ def mini_loader(matcher=None):
                     rec["scientificName"] = fixed
         return rec
     return get
+
+
+def mini_loader(matcher=None):
+    return ocr_loader(OCR, matcher)
 
 
 def run_cost(d, occids):
@@ -116,6 +119,8 @@ def run_cost(d, occids):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--runs", nargs="*", default=None, metavar="NAME=DIR")
+    ap.add_argument("--ocr-runs", nargs="*", default=None, metavar="NAME=DIR",
+                    help="runs cached in nbs/ocr_cache.py format (google, tesseract)")
     ap.add_argument("--no-baseline", action="store_true",
                     help="skip the shipped gpt-4o-mini (Azure OCR + LLM) baseline")
     ap.add_argument("--raw", action="store_true",
@@ -131,8 +136,11 @@ def main():
     if not runs:
         raise SystemExit("no run directories found -- run nbs/model_run.py first")
 
+    ocr_runs = dict(r.split("=", 1) for r in args.ocr_runs) if args.ocr_runs else {}
+    ocr_runs = {k: v for k, v in ocr_runs.items() if os.path.isdir(v)}
+
     common = None
-    for d in runs.values():
+    for d in list(runs.values()) + list(ocr_runs.values()):
         o = occids_in(d)
         common = o if common is None else (common & o)
     common &= occids_in(OCR)          # scoring needs the OCR words for grounding
@@ -160,6 +168,8 @@ def main():
     results = {}
     for name, d in runs.items():
         results[name] = score(name, loader(d, corrector), occids, gts, matcher)
+    for name, d in ocr_runs.items():
+        results[name] = score(name, ocr_loader(d, corrector), occids, gts, matcher)
     if not args.no_baseline:
         results["gpt-4o-mini (shipped)"] = score(
             "gpt-4o-mini (shipped, Azure OCR + LLM)", mini_loader(corrector),
