@@ -3,14 +3,23 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    # Keys are injected at run time, never baked into the image, so the image
-    # is safe to publish to a registry.
     env_file:
       - ../transcription/.env
+    volumes:
+      # Set GOOGLE_SA_KEY to the service-account key file on the host.
+      - ${GOOGLE_SA_KEY:?set GOOGLE_SA_KEY to the service-account key file}:/secrets/google-sa.json:ro
+      # Reviewer corrections outlive the container.
+      - reviews:/data
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /secrets/google-sa.json
+      REVIEWS_PATH: /data/reviews.jsonl
     ports:
       - "8080:8080"
     networks:
       - symbiota-network
+
+volumes:
+  reviews:
 
 networks:
   symbiota-network:
