@@ -20,6 +20,7 @@ Free: reads a local file, no API calls.
 """
 import argparse
 import csv
+import os
 import random
 import sys
 from collections import Counter, defaultdict
@@ -44,6 +45,9 @@ def main():
                          "one specimen per institution, which stresses label variety "
                          "but does not match the corpus mix; set e.g. 10 to get "
                          "several specimens from each of the larger collections")
+    ap.add_argument("--exclude-from", nargs="*", default=None,
+                    help="directories whose occids to exclude, so the draw is "
+                         "disjoint from an existing set")
     ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args()
 
@@ -52,8 +56,14 @@ def main():
     deny = set(args.exclude_countries) if args.exclude_countries else set()
     rng = random.Random(args.seed)
 
-    # One bounded reservoir per institution, so memory stays flat over a file
-    # far larger than RAM.
+    exclude = set()
+    for d in (args.exclude_from or []):
+        for f in os.listdir(d):
+            exclude.add(os.path.splitext(f)[0])
+    if exclude:
+        print(f"excluding {len(exclude)} occids already covered")
+
+    # Bounded reservoir per institution: memory stays flat on a file larger than RAM.
     pool = defaultdict(list)
     seen = defaultdict(int)
     scanned = kept = 0
@@ -80,7 +90,7 @@ def main():
                 if args.year_hi and y > args.year_hi:
                     continue
             gid = (row.get("gbifID") or "").strip()
-            if not gid:
+            if not gid or gid in exclude:
                 continue
 
             inst = (row.get("institutionCode") or "?").strip() or "?"
@@ -90,7 +100,6 @@ def main():
             if len(res) < args.per_institution_cap:
                 res.append(gid)
             else:
-                # Standard reservoir swap keeps each row equally likely.
                 j = rng.randrange(seen[inst])
                 if j < args.per_institution_cap:
                     res[j] = gid
@@ -98,7 +107,7 @@ def main():
     if not kept:
         raise SystemExit("no rows matched the filters")
 
-    # Round-robin across institutions until n, so no single collection dominates.
+    # Round-robin across institutions so no single collection dominates.
     order = sorted(pool, key=lambda k: -seen[k])
     if args.institutions:
         order = order[:args.institutions]

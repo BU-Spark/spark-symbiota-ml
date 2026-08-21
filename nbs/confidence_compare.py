@@ -1,15 +1,11 @@
 """Confidence discrimination for all three pipelines on the same specimens.
 
-Each pipeline gets the signals it actually ships: Azure adds self-consistency
-and a vision read, Anthropic a checker model, Google neither. nbs/confidence_eval.py
-scores grounding alone, which no pipeline ships.
-
-Reports Spearman rho between the confidence score and whether the field was
-right. Rank-based, so calibration does not affect it.
+Each pipeline is given the signals it actually ships. Reports Spearman rho, AUC,
+calibration error, and auto-accept coverage/precision at 0.90.
 
     python nbs/confidence_compare.py
 
-Free: reads cached outputs only.
+Free: reads cached outputs.
 """
 import json
 import os
@@ -29,6 +25,7 @@ GT_DIR = os.environ.get("HERBARIA_GT_DIR", "transcription/data/gbif-ne-500")
 AZURE_OCR = "transcription/results/ocr_cache/azure"
 GOOGLE_OCR = "transcription/results/ocr_cache/google"
 SC = "transcription/results/self_consistency_cache/azure"
+GOOGLE_SC = "transcription/results/self_consistency_cache/google"
 VIS = "transcription/results/vision_cache"
 SONNET5 = "transcription/results/model_cache/claude-sonnet-5"
 CHECKER = "transcription/results/model_cache/claude-sonnet-4-6"
@@ -44,10 +41,47 @@ def load(root, occid):
     return json.load(open(p, encoding="utf-8")) if os.path.exists(p) else None
 
 
+def auc(pairs):
+    """P(a correct field outscores a wrong one), ties at 0.5. 0.5 = coin flip."""
+    pos = [s for s, ok in pairs if ok]
+    neg = [s for s, ok in pairs if not ok]
+    if not pos or not neg:
+        return None
+    ranked = sorted(pairs, key=lambda p: p[0])
+    i, rank_sum = 0, 0.0
+    while i < len(ranked):                      # average ranks within a tie group
+        j = i
+        while j < len(ranked) and ranked[j][0] == ranked[i][0]:
+            j += 1
+        avg = (i + j + 1) / 2
+        rank_sum += sum(avg for k in range(i, j) if ranked[k][1])
+        i = j
+    return (rank_sum - len(pos) * (len(pos) + 1) / 2) / (len(pos) * len(neg))
+
+
+def ece(pairs, bins=5):
+    """Mean gap between stated confidence and actual accuracy. 0 is perfect."""
+    if not pairs:
+        return None
+    buckets = {}
+    for s, ok in pairs:
+        buckets.setdefault(min(int(s * bins), bins - 1), []).append((s, ok))
+    n = sum(len(b) for b in buckets.values())
+    return sum(len(b) / n * abs(sum(s for s, _ in b) / len(b)
+                                - sum(o for _, o in b) / len(b))
+               for b in buckets.values())
+
+
+def at_cutoff(pairs, cut=0.90):
+    """(coverage, precision) if fields at or above `cut` skipped review."""
+    kept = [ok for s, ok in pairs if s >= cut]
+    if not kept:
+        return 0.0, None
+    return len(kept) / len(pairs), sum(kept) / len(kept)
+
+
 def admin_accuracy(pred, a):
-    # location correctness against GBIF's structured admin fields, matching
-    # nbs/fit_calibration_anthropic.py. localities.txt is a free-text string and
-    # scores a correct read wrong whenever the wording differs.
+    # location correctness against GBIF's structured admin fields.
     parts = [a.get("stateProvince", ""),
              re.sub(r"\bcounty\b", "", a.get("county", ""), flags=re.I),
              a.get("locality", "")]
@@ -72,7 +106,7 @@ def azure_conf(occid, matcher):
 
 
 def google_conf(occid, matcher):
-    # As google_vision.py ships it: OCR grounding + GBIF, no second read.
+    # Baseline: OCR grounding + GBIF only.
     rec = load(GOOGLE_OCR, occid)
     if not rec:
         return None, None
@@ -91,19 +125,31 @@ def anthropic_conf(occid, matcher):
 
 
 def google_vis_conf(occid, matcher):
-    # Google plus the vision cross-read. The vision read is of the image, not of
-    # any OCR text, so the existing cache applies to Google unchanged -- this is
-    # what Google's confidence would look like with Azure's vision signal added.
+    # What google_vision.py ships: grounding + GBIF + vision.
     rec = load(GOOGLE_OCR, occid)
     if not rec:
         return None, None
     return rec["fields"], build_confidence(rec["fields"], rec["words"],
                                            vision_fields=load(VIS, occid),
-                                           taxon_matcher=matcher)
+                                           taxon_matcher=matcher,
+                                           calibration="calibration_google")
+
+
+def google_full_conf(occid, matcher):
+    # Vision plus self-consistency, for comparison; not shipped.
+    rec = load(GOOGLE_OCR, occid)
+    if not rec:
+        return None, None
+    return rec["fields"], build_confidence(rec["fields"], rec["words"],
+                                           sc_samples=load(GOOGLE_SC, occid),
+                                           vision_fields=load(VIS, occid),
+                                           taxon_matcher=matcher,
+                                           calibration="calibration_google")
 
 
 PIPELINES = {"Azure": azure_conf, "Google": google_conf,
-             "Google+vis": google_vis_conf, "Anthropic": anthropic_conf}
+             "Google+vis": google_vis_conf, "Google+all": google_full_conf,
+             "Anthropic": anthropic_conf}
 
 
 def main():
@@ -155,6 +201,39 @@ def main():
 
     print("\n  rho is the score's ability to rank right above wrong.")
     print("  Below about +0.3 the score is too weak to route review on.")
+
+    print(f"\n\n===== AUC: P(a correct field outscores a wrong one) "
+          f"-- 0.50 = coin flip =====")
+    print(f"  {'field':16}" + "".join(f"{n:>12}" for n in names))
+    for f in FIELDS:
+        row = f"  {f:16}"
+        for n in names:
+            a = auc(pairs[n][f])
+            row += f"{a:>12.3f}" if a is not None else f"{'--':>12}"
+        print(row)
+    print(f"  {'MEAN':16}" + "".join(
+        f"{sum(v for v in (auc(pairs[n][f]) for f in FIELDS) if v is not None) / len(FIELDS):>12.3f}"
+        for n in names))
+
+    print(f"\n\n===== calibration error: |stated confidence - actual accuracy| "
+          f"-- 0 is perfect =====")
+    print(f"  {'field':16}" + "".join(f"{n:>12}" for n in names))
+    for f in FIELDS:
+        row = f"  {f:16}"
+        for n in names:
+            e = ece(pairs[n][f])
+            row += f"{e:>12.3f}" if e is not None else f"{'--':>12}"
+        print(row)
+
+    print(f"\n\n===== auto-accept at confidence >= 0.90 =====")
+    print(f"  {'field':16}" + "".join(f"{n:>22}" for n in names))
+    print(f"  {'':16}" + "".join(f"{'skipped   correct':>22}" for _ in names))
+    for f in FIELDS:
+        row = f"  {f:16}"
+        for n in names:
+            cov, prec = at_cutoff(pairs[n][f])
+            row += f"{cov:>15.0%}{prec:>7.0%}" if prec is not None else f"{'--':>22}"
+        print(row)
 
 
 if __name__ == "__main__":

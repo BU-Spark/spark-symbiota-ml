@@ -5,7 +5,10 @@ import json
 from pathlib import Path
 
 from dotenv import load_dotenv
-from utils import image_utils
+try:                                     # script or package import
+    from transcription.utils import image_utils
+except ImportError:
+    from utils import image_utils
 
 # Load from this file's directory, not the caller's cwd, so the pipeline works
 # whether it is run from transcription/ or imported from the repository root.
@@ -224,33 +227,70 @@ def extract_json(text):
     return None
 
 
-def _correct_json(text: str, checker: dict = None) -> str:
+def _correct_json(text: str, checker: dict = None, azure_read: dict = None) -> str:
     # Unparseable input is returned untouched for the caller to handle.
     data = extract_json(text)
     if not isinstance(data, dict):
         return text
     # Score before correcting: correcting first makes every name match GBIF and
     # saturates the signal.
-    data["confidence"] = build_confidence(data, checker)
+    data["confidence"] = build_confidence(data, checker, azure_read)
     data = apply_taxon_correction(data)
     return json.dumps(data, ensure_ascii=False)
 
 CHECKER_MODEL = "claude-sonnet-4-6"
 
 
+def _enhanced_enabled() -> bool:
+    return os.environ.get("CONFIDENCE_ENHANCED", "1").strip().lower() not in (
+        "0", "false", "no", "off", "")
+
+
+def _azure_read(image_path: str):
+    """Azure OCR + gpt-4o-mini extraction, for the barcode signal. None on failure.
+
+    Extraction only -- calling run_doc_intell_pipeline would also run Azure's own
+    self-consistency and vision signals, which this does not use.
+    """
+    try:
+        try:
+            from transcription.doc_intelligence import (process_image, get_image_words,
+                                                        extract_info, example_result,
+                                                        example_output)
+        except ImportError:
+            from doc_intelligence import (process_image, get_image_words, extract_info,
+                                          example_result, example_output)
+        result = process_image(image_path)
+        _words, conf_text = get_image_words(result)
+        doc = result.content + "\n\nConfidence Metrics:\n" + conf_text
+        return json.loads(extract_info(doc, example_result, example_output))
+    except Exception:
+        return None
+
+
 def run_claude_pipeline(image_path, model=DEFAULT_MODEL, return_usage=False,
-                        checker_model=None):
+                        checker_model=None, enhanced=None):
     # `model` lets the same prompt run across models; keep the prompt identical or
     # cached runs stop being comparable.
     # `return_usage` returns (text, usage) instead of text; usage is None on error.
     # `checker_model` re-reads the image to score eventDate and recordedBy, at
     # double the cost.
+    # Without these only scientificName and location get a score.
+    # enhanced=False keeps that cheaper mode.
+    if enhanced is None:
+        enhanced = _enhanced_enabled()
+    if checker_model is None and enhanced:
+        checker_model = CHECKER_MODEL
+
     checker = None
     if checker_model:
         try:
-            checker = extract_json(run_claude_pipeline(image_path, checker_model))
+            checker = extract_json(run_claude_pipeline(image_path, checker_model,
+                                                       enhanced=False))
         except Exception:
             checker = None
+
+    azure_read = _azure_read(image_path) if enhanced else None
     if image_path.lower().endswith((".png", ".jpg", ".jpeg")):
         image_utils.resize_image(image_path)
         encoded_image = encode_image_to_base64(image_path)
@@ -291,7 +331,7 @@ def run_claude_pipeline(image_path, model=DEFAULT_MODEL, return_usage=False,
             # Newer models can return a thinking block before the text block, so
             # pick the first text block rather than content[0] blindly.
             result = next((b.text for b in message.content if b.type == "text"), "")
-            result = _correct_json(result, checker)
+            result = _correct_json(result, checker, azure_read)
             if return_usage:
                 u = message.usage
                 return result, {"input_tokens": u.input_tokens,

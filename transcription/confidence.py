@@ -189,12 +189,29 @@ class GbifTaxonMatcher:
             except Exception:
                 self._cache = {}
 
+    @staticmethod
+    def _lower_epithet(name) -> str:
+        # Old labels capitalise the species epithet ("Rumex Acetosella"), which
+        # GBIF does not match.
+        parts = str(name).split()
+        if len(parts) >= 2 and parts[1][:1].isupper() and parts[1].isalpha():
+            parts[1] = parts[1].lower()
+            return " ".join(parts)
+        return ""
+
     def match(self, name) -> Optional[dict]:
         # {"matchType": ..., "species": <canonical binomial or None>}; None on error.
         if not name:
             return None
         if name in self._cache:
-            return self._cache[name]
+            res = self._cache[name]
+            if res and res.get("matchType") == "NONE":
+                alt = self._lower_epithet(name)
+                if alt:
+                    retry = self.match(alt)
+                    if retry and retry.get("matchType") != "NONE":
+                        return retry
+            return res
         import json
         import urllib.parse
         import urllib.request
@@ -211,6 +228,12 @@ class GbifTaxonMatcher:
             json.dump(self._cache, open(self.cache_file, "w", encoding="utf-8"))
         except Exception:
             pass
+        if res.get("matchType") == "NONE":
+            alt = self._lower_epithet(name)
+            if alt:
+                retry = self.match(alt)
+                if retry and retry.get("matchType") != "NONE":
+                    return retry
         return res
 
     def __call__(self, name) -> Optional[str]:
@@ -474,26 +497,28 @@ def eventdate_confidence(value: str, ocr_words: list, sc_samples: list = None,
 # --------------------------------------------------------------------------- #
 #  calibration (raw signal -> probability of correctness)
 # --------------------------------------------------------------------------- #
-_CALIBRATION = None  # {field: [[x, p], ...]} isotonic knots fit by nbs/fit_calibration.py
+# {map name: {field: [[x, p], ...]}} isotonic knots. Each pipeline has its own map.
+_CALIBRATION = {}
+DEFAULT_CALIBRATION = "calibration"
 
 
-def _calibration():
-    global _CALIBRATION
-    if _CALIBRATION is None:
-        path = os.path.join(os.path.dirname(__file__), "calibration.json")
+def _calibration(name: str = DEFAULT_CALIBRATION):
+    if name not in _CALIBRATION:
+        path = os.path.join(os.path.dirname(__file__), f"{name}.json")
         try:
-            _CALIBRATION = json.load(open(path, encoding="utf-8"))
+            _CALIBRATION[name] = json.load(open(path, encoding="utf-8"))
         except Exception:
-            _CALIBRATION = {}  # no map -> scores pass through uncalibrated
-    return _CALIBRATION
+            _CALIBRATION[name] = {}  # no map -> scores pass through uncalibrated
+    return _CALIBRATION[name]
 
 
-def _apply_calibration(field: str, score: Optional[float]) -> Optional[float]:
+def _apply_calibration(field: str, score: Optional[float],
+                       name: str = DEFAULT_CALIBRATION) -> Optional[float]:
     # Piecewise-linear between the field's isotonic knots, so conf=0.8 means ~80%
-    # correct. Fields without a map pass through unchanged.
-    if score is None:
-        return None
-    knots = _calibration().get(field)
+    # correct. No map, or name=None, returns the raw signal unchanged.
+    if score is None or not name:
+        return score
+    knots = _calibration(name).get(field)
     if not knots:
         return score
     if score <= knots[0][0]:
@@ -533,11 +558,13 @@ def _field_confidence(field: str, value: str, ocr_words: list,
 
 def build_confidence(fields: dict, ocr_words: list, sc_samples: list = None,
                      vision_fields: dict = None, taxon_matcher=None,
-                     detail: bool = False) -> dict:
+                     detail: bool = False,
+                     calibration: str = DEFAULT_CALIBRATION) -> dict:
     # Per-field confidence object. Optional context enables the strong signals:
     #   sc_samples     -- list of K self-consistency extraction dicts (eventDate)
     #   vision_fields  -- an independent vision read's field dict (eventDate, recordedBy)
     #   taxon_matcher  -- callable name->GBIF matchType (scientificName)
+    #   calibration    -- calibration map name for this pipeline
     # Default output: {field: float|None}. detail=True: {field: {"score":..., "coverage":...}}.
     confidence = {}
     for field in FIELDS:
@@ -545,8 +572,8 @@ def build_confidence(fields: dict, ocr_words: list, sc_samples: list = None,
                                 sc_samples, vision_fields, taxon_matcher)
         # Calibrate the raw signal to a probability of correctness (monotonic, so
         # ranking is unchanged; only the numbers become meaningful). No-op for
-        # fields without a calibration map or when calibration.json is absent.
-        score = _apply_calibration(field, raw)
+        # fields without a calibration map or when the map file is absent.
+        score = _apply_calibration(field, raw, calibration)
         if detail:
             # keep a "coverage" key so envelope.py's detail-shape fallback works
             confidence[field] = {"score": score, "coverage": score, "raw": raw,

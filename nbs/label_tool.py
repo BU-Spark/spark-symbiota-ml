@@ -37,8 +37,7 @@ FIELD_FILE = {
 }
 FIELDS = list(FIELD_FILE)
 
-# AVOID names the mistake each field attracts -- mostly other labels on the same
-# sheet: institution stamps, exchange labels, determination slips.
+# AVOID names the mistake each field attracts: other labels on the same sheet.
 HINT = {
     "scientificName": "Genus + species, currently accepted name. Authority not needed.",
     "eventDate": "Four-digit year always -- '5/21/19' cannot be parsed. Only the year is scored.",

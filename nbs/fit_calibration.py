@@ -8,6 +8,7 @@ map to transcription/calibration.json for the runtime to load.
 
 import json
 import os
+import re
 import sys
 from difflib import SequenceMatcher
 
@@ -82,6 +83,22 @@ def collect(gt_dir, m):
     return out
 
 
+def admin_recall(pred, a):
+    """Fraction of GBIF's state/county/locality tokens present in `pred`.
+
+    The portal displays the flat locality string, so that is what the score has to
+    describe. Labelling by state alone answers an easier question.
+    """
+    parts = [a.get("stateProvince", ""),
+             re.sub(r"county", "", a.get("county", ""), flags=re.I),
+             a.get("locality", "")]
+    g = _tokenize(" ".join(parts))
+    if not g:
+        return None
+    p = _tokenize(pred)
+    return sum(1 for t in g if any(ratio(t, q) >= 0.85 for q in p)) / len(g)
+
+
 def location_pairs():
     # Built from the OCR and vision caches. Labels are STATE correctness, which is
     # not the admin token-recall that nbs/roi_pareto_eval.py scores location on.
@@ -112,14 +129,42 @@ def location_pairs():
         vp = os.path.join(VIS, f"{occid}.json")
         visf = flat(json.load(open(vp, encoding="utf-8")).get("location")) if os.path.exists(vp) else ""
         c = location_confidence(llm, rec["words"], visf or None)
-        gt = _state_code(admin[occid].get("stateProvince", ""))
-        if c is None or gt is None:
+        if c is None:
             continue
-        pairs.append((c, 1 if _state_code(llm) == gt else 0))
+        acc = admin_recall(llm, admin[occid])
+        if acc is None:
+            continue
+        pairs.append((c, 1 if acc >= 0.5 else 0))
     return pairs
 
 
-def isotonic(pairs, min_count=25):
+def wilson_lower(hits, n, z=1.2816):
+    """Lower end of a one-sided 90% interval on hits/n, so the map never claims
+    more than the data supports. Small blocks shrink most."""
+    if n == 0:
+        return 0.0
+    p = hits / n
+    d = 1 + z * z / n
+    centre = (p + z * z / (2 * n)) / d
+    margin = z * ((p * (1 - p) / n + z * z / (4 * n * n)) ** 0.5) / d
+    return max(0.0, centre - margin)
+
+
+def over_ece(pairs, knots=None, bins=5):
+    """ECE counting only buckets where the map claims more than it delivers."""
+    if not pairs:
+        return float("nan")
+    buckets = {}
+    for c, ok in pairs:
+        v = apply_cal(knots, c) if knots else c
+        buckets.setdefault(min(int(v * bins), bins - 1), []).append((v, ok))
+    n = sum(len(b) for b in buckets.values())
+    return sum(len(b) / n * max(0.0, sum(v for v, _ in b) / len(b)
+                                     - sum(o for _, o in b) / len(b))
+               for b in buckets.values())
+
+
+def isotonic(pairs, min_count=25, conservative=True):
     # PAVA: monotonic non-decreasing fit of P(correct) vs score, then merge any
     # block with < min_count samples into a neighbour so every calibrated level
     # rests on enough data to be a stable probability (regularization vs overfit).
@@ -147,8 +192,13 @@ def isotonic(pairs, min_count=25):
             blocks[i + 1] = [blocks[i][0] + blocks[i + 1][0], blocks[i][1] + blocks[i + 1][1], blocks[i + 1][2]]
     knots = []
     lo_x = pts[0][0]
+    floor = 0.0
     for s, c, x_last in blocks:
-        p = round(s / c, 4)
+        p = wilson_lower(s, c) if conservative else s / c
+        # The lower bound shrinks small blocks hardest, which can invert two
+        # neighbours. The map must stay non-decreasing.
+        floor = p = max(p, floor)
+        p = round(p, 4)
         if not knots:
             knots.append([lo_x, p])
         knots.append([x_last, p])
@@ -209,12 +259,15 @@ def main():
     for f in FIELDS:
         knots = isotonic(train[f], min_count=MC)
         if f in holdable:
-            hr, hc = ece(hold[f]), ece(hold[f], knots)
-            ship = hc < hr - 0.005  # must improve holdout by a clear margin
+            hr, hc = over_ece(hold[f]), over_ece(hold[f], knots)
+            # Conservative maps under-state by design, so plain ECE would reject
+            # them. Only over-statement can mislead, and the map also caps the
+            # ceiling, so ship unless it makes over-statement worse.
+            ship = hc <= hr + 0.005
             hs = f"{hr:.3f} -> {hc:.3f}"
         else:
-            ship = True  # no holdout (location); signal already validated, train improves
-            hs = "(no holdout)"
+            ship = True
+            hs = "(too few holdout rows)"
         if ship:
             cal[f] = knots
         print(f"  {f:15}{ece(train[f]):>10.3f} -> {ece(train[f], knots):<6.3f}{hs:>22}   {'YES' if ship else 'no (keep raw)'}")

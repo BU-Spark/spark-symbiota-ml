@@ -7,7 +7,6 @@ import openai
 import random
 import pandas as pd
 
-from utils import image_utils
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -17,8 +16,10 @@ load_dotenv(dotenv_path=env_path)
 # Works both as a script (cwd=transcription) and as a package import
 try:
     from transcription.confidence import build_confidence, detail_enabled, GbifTaxonMatcher
+    from transcription.doc_intelligence import _enhanced_enabled as enhanced_enabled
 except ImportError:
     from confidence import build_confidence, detail_enabled, GbifTaxonMatcher
+    from doc_intelligence import _enhanced_enabled as enhanced_enabled
 
 _TAXON_MATCHER = None
 
@@ -28,6 +29,21 @@ def _taxon_matcher():
     if _TAXON_MATCHER is None:
         _TAXON_MATCHER = GbifTaxonMatcher()
     return _TAXON_MATCHER
+
+
+def _vision_read(image_path: str):
+    """Independent gpt-4o-mini read of the image. None on failure."""
+    try:
+        from doc_intelligence import vision_extract_fields, _flatten_location
+    except ImportError:
+        from transcription.doc_intelligence import vision_extract_fields, _flatten_location
+    v = vision_extract_fields(image_path)
+    if not v:
+        return None
+    v = dict(v)
+    if isinstance(v.get("location"), dict):
+        v["location"] = _flatten_location(v["location"])
+    return v
 
 # code adapted from spring 2024 ml team 
 openai.api_key = os.environ["OPENAI_API_KEY"] 
@@ -213,14 +229,16 @@ def run_google_vision_pipeline(image_path: str):
             result["image_path"] = image_path
 
             matcher = _taxon_matcher()
-            # Scored on the raw read, before the name is snapped to GBIF's
-            # accepted species, so a FUZZY read still scores low.
+            vision_fields = _vision_read(image_path) if enhanced_enabled() else None
+
+            # Scored before the GBIF correction, so a FUZZY read still scores low.
             result["confidence"] = build_confidence(
-                result, words, taxon_matcher=matcher, detail=detail_enabled()
+                result, words, vision_fields=vision_fields,
+                taxon_matcher=matcher, detail=detail_enabled(),
+                calibration="calibration_google",
             )
 
-            # Snap to GBIF's accepted species, keeping the verbatim read and match
-            # type. No vision tiebreak -- this pipeline has no second read.
+            # Snap to GBIF's accepted species, keeping the verbatim read.
             raw_sci = result.get("scientificName", "")
             if raw_sci and str(raw_sci).strip().upper() != "UNKNOWN":
                 corrected, match_type = matcher.correct(raw_sci)
