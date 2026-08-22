@@ -5,28 +5,34 @@ What to ship, what it costs, and when to use which. Evidence is in
 
 ## Recommendation
 
-**Offer both pipelines. Default to Azure for bulk digitisation, and offer Claude
-Sonnet 5 for collections where the record will be published or relied on.**
+**Offer all three. Default to Google for bulk digitisation, and offer Claude Sonnet 5
+for collections where the record will be published or relied on.**
 
-| | Azure | Anthropic |
-|---|---|---|
-| Extractor | Azure OCR + gpt-4o-mini | Claude Sonnet 5, image-native |
-| Accuracy | 74% | **85%** |
-| Invented species names | 11.3% | **1.3%** |
-| Cost per 1,000 | **$4.50** | $19.90 |
-| Confidence | 5 fields, 4 calibrated | 5 fields, 4 calibrated |
+| | Azure | Google | Anthropic |
+|---|---|---|---|
+| Extractor | Azure OCR + gpt-4o-mini | Google Doc AI + gpt-4o-mini | Claude Sonnet 5, image-native |
+| Accuracy | 74% | 76% | **85%** |
+| Invented species names | 12.3% | 6.0% | **0.8%** |
+| Cost per 1,000, with confidence | $4.50 | **$3.00** | $19.90 |
+| Confidence | 5 fields, all calibrated | 5 fields, all calibrated | 5 fields, all calibrated |
 
-Claude costs about 4x more and is 11 accuracy points better. That is a real tradeoff,
-not an upgrade, which is why both stay available.
+**Google replaces Azure as the cheap default.** It is more accurate at two thirds the
+price, and invents half as many species names. Both use the same language model;
+only the OCR engine and prompt differ.
+
+Claude costs ten times Google and is 9 accuracy points better. That is a real tradeoff,
+not an upgrade, which is why all three stay available.
 
 **If only one can be maintained, ship Claude Sonnet 5.** Two of the Azure gaps are
 severe enough to affect published data: it reads `location` correctly 55% of the
-time, and roughly one in nine scientific names it emits does not exist.
+time, and roughly one in eight scientific names it emits does not exist.
 
 ## The options, priced
 
 | Option | Accuracy | $/1,000 | Confidence |
 |---|---:|---:|---|
+| **Google, full** | **76%** | **$3.00** | 5 fields |
+| Google, extraction only | 76% | $2.00 | none |
 | Azure, extraction only | 74% | $2.00 | none |
 | **Azure, full** | **74%** | **$4.50** | 5 fields |
 | Claude Sonnet 5, extraction only | 85% | $11.34 | 2 fields |
@@ -60,15 +66,15 @@ tradeoff then; it does not change the ranking, but it narrows the gap to Opus 4.
 
 ## Where each pipeline wins
 
-Per-field accuracy, Sonnet 5 against the current production pipeline:
+Per-field accuracy, on the same 150 specimens:
 
-| Field | Azure | Claude Sonnet 5 |
-|---|---:|---:|
-| `location` | 54.5% | **85.6%** |
-| `scientificName` | 71.4% | **85.3%** |
-| `eventDate` | 78.9% | **87.2%** |
-| `barcode` | 90.5% | 91.3% |
-| `recordedBy` | 75.3% | 75.0% |
+| Field | Azure | Google | Claude Sonnet 5 |
+|---|---:|---:|---:|
+| `location` | 54.5% | 65.7% | **85.6%** |
+| `scientificName` | 71.4% | 76.9% | **85.3%** |
+| `eventDate` | 78.9% | 76.7% | **87.2%** |
+| `barcode` | 90.5% | 89.1% | **91.3%** |
+| `recordedBy` | **75.3%** | 71.5% | 75.0% |
 
 The gap is concentrated in `location` and `scientificName`, and both have the same
 cause: gpt-4o-mini never sees the specimen. It only receives whatever text Azure's OCR
@@ -81,9 +87,14 @@ database:
 
 | Pipeline | Invented species names |
 |---|---:|
-| Azure (gpt-4o-mini) | 11.3% |
-| Claude Sonnet 5 | 1.3% |
-| Claude Opus 4.8 | 0.7% |
+| Azure (gpt-4o-mini) | 12.3% |
+| Google (gpt-4o-mini) | 6.0% |
+| Claude Sonnet 5 | **0.8%** |
+
+An earlier version of this document reported 11.3% and 1.3%. That measurement counted
+a capitalised species epithet (*Rumex Acetosella*, a 19th-century labelling
+convention) as invented, which penalised the pipeline that transcribes most
+faithfully. Corrected above.
 
 These are automatically detectable — a name GBIF cannot match at any rank is
 fabricated by definition — so they can be flagged for review on either pipeline rather
@@ -91,35 +102,31 @@ than shipped silently. That is worth doing regardless of which pipeline is chose
 
 ## What each pipeline ships with
 
-Both produce the same flat Darwin Core object plus a parallel `_confidence` map, so
-they are interchangeable behind a selector.
+All three produce the same flat Darwin Core object plus a parallel `_confidence` map,
+so they are interchangeable behind a selector.
 
-| Field | Azure signal | Claude signal |
-|---|---|---|
-| `scientificName` | GBIF match type + vision agreement | GBIF match type |
-| `location` | place gazetteer + vision state check | place gazetteer |
-| `eventDate` | self-consistency + vision agreement | agreement with a checker model |
-| `recordedBy` | collector list + vision agreement | collector list + checker agreement |
-| `barcode` | digit-run structure + self-consistency | agreement with the Azure read |
+| Field | Azure signal | Google signal | Claude signal |
+|---|---|---|---|
+| `scientificName` | GBIF match + vision | GBIF match + vision | GBIF match |
+| `location` | gazetteer + vision state check | gazetteer + vision | gazetteer |
+| `eventDate` | self-consistency + vision | vision agreement | checker model |
+| `recordedBy` | collector list + vision | collector list + vision | collector list + checker |
+| `barcode` | digit-run + self-consistency | digit-run structure | agreement with the Azure read |
 
-Both have calibrated maps on four of five fields; `recordedBy` ships raw on both,
-because its score is not monotonically related to accuracy and calibration makes it
-worse. Calibration means a shipped 0.9 is roughly 90% likely to be correct, so the two
-pipelines' numbers mean the same thing in the same UI.
+All three carry calibrated maps on all five fields, so a 0.9 means the same thing
+whichever pipeline produced it. The maps are deliberately conservative: each value is
+the figure we are 90% confident the data supports, not the observed average. They
+under-state rather than over-state, verified against 148 specimens never used for
+fitting. See [confidence.md](confidence.md).
 
 ## Setting the review threshold
 
-At a confidence cutoff of 0.90 on the Azure pipeline:
+There is no single right cutoff, and it is a per-collection decision rather than a
+project-wide one. **0.80 to 0.85 is the useful range** — at 0.90 only two of Azure's
+five fields can reach the cutoff at all, because the maps under-state deliberately.
 
-| | |
-|---|---|
-| Fields auto-accepted | 47% |
-| Wrong among those | ~5% |
-| Saved on a 1.5M corpus | ~7,900 reviewer-hours |
-
-Raising the cutoff above 0.90 buys little — coverage falls while the missed-error rate
-stays flat, because calibration compresses the top of the range. 0.90 is a reasonable
-default for the rapid-entry tool.
+What each cutoff buys, per field and per pipeline, is in
+`transcription/threshold_table.json`. The tool at `/tool` shows it live.
 
 ## An improvement available to the Azure pipeline
 
@@ -139,14 +146,18 @@ behind a flag rather than as the default.
 
 **The ground truth is partly circular.** It comes from GBIF, and `scientificName`'s
 strongest signal is a GBIF backbone match, so that field is partly graded by its own
-source. The hand-labelled non-GBIF test set in `cost-projection.md` part (b) is the fix,
-and it is cheap — about $9.
+source. A 40-specimen hand-labelled check found **no pipeline errors** among the
+`scientificName` disagreements — every one was a transcription slip, an abbreviation,
+or a synonym in the hand labels. So no inflation was detected, but the check is too
+small and too noisy to confirm the numbers: a non-expert labels cursive species names
+at about 11% error, which cannot validate a pipeline claiming 85%. Closing this needs
+a botanist on the species column.
 
 **The model comparison is n=150.** Differences under about 3 points are inside noise.
 The 10-point gaps are safe; the 0.4-point gap between Sonnet 5 and Opus 4.8 is not
 meaningful.
 
-**Neither pipeline is reproducible run to run.** Five runs of the same specimen change
+**No pipeline is reproducible run to run.** Five runs of the same specimen change
 at least one field on 40% of specimens — usually formatting or completeness, sometimes
 a genuine disagreement. Aggregating five runs does not improve accuracy, so the answer
 is to store results rather than regenerate them on demand.
@@ -154,12 +165,30 @@ is to store results rather than regenerate them on demand.
 **`location` ground truth covers about two-thirds of specimens**, so that column rests
 on a smaller sample than the others.
 
-## Before this ships
+## What to do next
 
-| | |
-|---|---|
-| Top up the OpenAI credit | the Azure pipeline cannot run at all right now, and it supplies Claude's `barcode` confidence |
-| Add retry and rate-limit handling | both pipelines make single synchronous calls with no backoff |
-| Decide store vs regenerate | see run-to-run reproducibility above |
-| Validate the Batch API | halves Azure's cost for bulk work; still untested |
-| Separate the NE-50 holdout | 48 of its 50 specimens are currently inside the training set, so the Azure calibration cannot be validly refit |
+**Get a botanist to review 40 species names.** Roughly twenty minutes of expert time.
+It is the only thing standing between "no inflation detected" and "the numbers are
+confirmed", and every accuracy figure here carries that caveat until it is done.
+
+**Let the tool learn from corrections.** Confidence means different things in
+different collections — the same field reads 39% correct on amateur handwritten
+labels and 75% on printed ones. The maps are conservative so this is safe rather than
+solved, but the real fix is fitting per collection. Every correction typed into
+`/tool` is a labelled specimen from that collection; nothing reads that log yet, and
+roughly 150 to 300 reviews would be needed before a refit means anything.
+
+**Harden for scale.** No retry, no backoff, no parallelism. Fine for 150 specimens; a
+1.5M run would take a year and lose work to transient failures.
+
+**Decide store versus regenerate.** Five runs of the same specimen change at least one
+field on 40% of specimens, and averaging runs does not help. Results should be stored,
+not recomputed on demand.
+
+**Redraw the holdout.** The current one was drawn from the largest herbaria, so it is
+easier than the training data. It proves nothing over-states, but understates how much
+review the tool can save.
+
+**Benchmark the open-source alternatives.** The summer plan lists them and none has
+been tried. The free Tesseract baseline has still never been scored, so there is no
+floor to compare the paid services against.

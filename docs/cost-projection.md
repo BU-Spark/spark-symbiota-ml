@@ -17,8 +17,8 @@ All costs are dollars per 1,000 specimens, measured from real runs on our test s
 | OpenAI gpt-4o-mini, text | Extract 6 fields from the OCR text | Production | $0.50 |
 | OpenAI gpt-4o-mini, self consistency and vision | The confidence signals, 4 extra calls | Production, on by default | $2.50 |
 | GBIF API | Taxonomy check and ground truth | Production | Free |
-| Anthropic Claude Sonnet 5 | Image-native alternate pipeline | Evaluated, recommended | $11.34 |
-| Google Document AI | Alternate OCR | Experimental, blocked on creds | about $1.50 |
+| Anthropic Claude Sonnet 5 | Image-native alternate pipeline | In production | $19.90 |
+| Google Document AI | OCR for the Google pipeline | In production | $1.50 |
 | Tesseract | Free OCR baseline | Experimental | Free |
 
 Only Azure, OpenAI and Anthropic carry recurring cost. GBIF is free. The gpt-4o-mini
@@ -45,15 +45,27 @@ estimates. Confidence scoring is priced separately because it is optional.
 | Azure OCR + gpt-4o-mini (1 confidence field) | 2 | $2.00 |
 | **Total** | **4** | **$19.90** |
 
+This is the default. `CONFIDENCE_ENHANCED=0` drops the last two rows for $11.34 and
+confidence on two fields instead of five.
+
+| Google pipeline | Calls | Cost per 1,000 |
+|---|---:|---:|
+| Google Document AI OCR | 1 | $1.50 |
+| gpt-4o-mini extraction | 1 | $0.50 |
+| Vision cross-read (confidence) | 1 | $1.00 |
+| **Total** | **3** | **$3.00** |
+
 Rounded for planning:
 
 | Pipeline | per 1,000 | notes |
 |---|---:|---|
+| Google, extraction only | $2.00 | no confidence signals |
+| Google, full | $3.00 | confidence on 5 fields |
 | Azure, extraction only | $2.00 | no confidence signals |
 | Azure, full | $4.50 | confidence on 5 fields |
 | Azure, full with Batch API | $3.00 | |
 | Anthropic, extraction only | $11.34 | confidence on 2 fields |
-| Anthropic, full | $19.90 | confidence on 5 fields |
+| Anthropic, full | $19.90 | confidence on 5 fields, the default |
 
 ### What the models cost
 
@@ -66,7 +78,8 @@ extracted fields.
 | **Claude Sonnet 5** | **85%** | **$11.34** |
 | Claude Opus 4.6 | 79% | $10.78 |
 | Claude Sonnet 4.6 | 75% | $6.56 |
-| gpt-4o-mini (current production) | 74% | $4.50 |
+| Google Doc AI + gpt-4o-mini | 76% | $3.00 |
+| Azure + gpt-4o-mini | 74% | $4.50 |
 | Claude Haiku 4.5 | 49% | $2.17 |
 
 Sonnet 5 matches the most expensive model tested at less than half the price. Haiku
@@ -152,19 +165,20 @@ Assume the experiments pan out and we move from test set iteration to processing
 collections, still inside the few thousand a month idea from part (a).
 
 Cost is driven by how many specimens we process, plus a small steady state for new
-accessions. The Azure column is the current pipeline at $4.50 per 1,000; the
-Anthropic column is Sonnet 5 with full confidence at $19.90. Batch pricing halves
-the Azure figure.
+accessions. All three columns include confidence on five fields.
 
-| Scenario | Specimens | Azure | Azure batched | Anthropic |
+| Scenario | Specimens | Google | Azure | Anthropic |
 |---|---:|---:|---:|---:|
-| Test iteration, cached | 500 | about $0 | | about $0 |
-| 10,000-specimen pilot | 10k | $45 | $30 | $199 |
-| New England corpus | 1.5M | $6,750 | $4,500 | $29,850 |
-| Symbiota wide, aspirational | 10M | $45k | $30k | $199k |
-| New accessions per year | 200k | $900 | $600 | $3,980 |
+| Test iteration, cached | 500 | about $0 | about $0 | about $0 |
+| 10,000-specimen pilot | 10k | $30 | $45 | $199 |
+| New England corpus | 1.5M | $4,500 | $6,750 | $29,850 |
+| Symbiota wide, aspirational | 10M | $30k | $45k | $199k |
+| New accessions per year | 200k | $600 | $900 | $3,980 |
 
-Two year build up for the New England target, using the Batch API:
+Google reaches the batched Azure price without needing the Batch API, and is two
+accuracy points better.
+
+Two year build up for the New England target, on the Google pipeline:
 
 | | Cost |
 |---|---:|
@@ -174,27 +188,28 @@ Two year build up for the New England target, using the Batch API:
 | Experimentation, two years | about $200 |
 | Two year total | about $7,400 |
 
-Even the biggest single event, a full 1.5M run, is about $4,500 with the Batch API,
-and it happens once. Steady state after that is a few hundred dollars a year. If we
-ever go Symbiota wide at 10M or more, the one time cost rises to about $30k with
-batching, which is the point to get a committed tier Azure quote.
+Even the biggest single event, a full 1.5M run, is about $4,500 and happens once.
+Steady state after that is a few hundred dollars a year. If we ever go Symbiota wide
+at 10M or more, the one time cost rises to about $30k, which is the point to get a
+committed tier quote.
 
 ### What the pipeline choice costs
 
-The bake off is done, so these are measured rather than estimated. Both pipelines
-will be offered as a user choice, so the corpus figure depends on which one users
-pick. Full 1.5M New England corpus, one time:
+The bake off is done, so these are measured rather than estimated. All three pipelines
+are offered as a user choice, so the corpus figure depends on which one users pick.
+Full 1.5M New England corpus, one time:
 
 | Pipeline | per 1,000 | full 1.5M corpus | accessions per year (200k) |
 |---|---:|---:|---:|
+| Google, full | $3.00 | about $4,500 | about $600 |
 | Azure, batched | $3.00 | about $4,500 | about $600 |
 | Azure, full | $4.50 | about $6,750 | about $900 |
 | Claude Sonnet 5, extraction only | $11.34 | about $17,000 | about $2,300 |
 | Claude Sonnet 5, full confidence | $19.90 | about $30,000 | about $4,000 |
 
-The Anthropic pipeline costs about four times as much and is about 11 accuracy points
+The Anthropic pipeline costs about seven times as much and is about 9 accuracy points
 better, so the choice is a real tradeoff rather than an upgrade. A sensible default is
-Azure for bulk work and Claude for collections where accuracy matters most.
+Google for bulk work and Claude for collections where accuracy matters most.
 
 
 

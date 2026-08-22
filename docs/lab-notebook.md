@@ -6,7 +6,7 @@ each part.
 
 This is the *log*. Two companion documents draw from it:
 
-- `docs/azure-confidence-pipeline.md` — how the shipped Azure confidence scoring
+- `docs/confidence.md` — how the shipped confidence scoring
   works. Reference, not history.
 - `docs/cost-projection.md` — what the services cost and what scaling up would cost.
 
@@ -162,6 +162,12 @@ Calibration was re-fit afterwards, since the score distribution changed shape.
 
 ## 1.6 Confidence performance summary
 
+> **Superseded by 4.2.** These figures predate conservative calibration. The maps now
+> under-state deliberately, so a 0.90 cutoff covers far fewer fields. Current
+> coverage and precision at every cutoff: `transcription/threshold_table.json`.
+> The `location` open question below is resolved — it is now fitted against the
+> displayed locality string.
+
 Per-field discrimination, enhanced signals on, after 1.5:
 
 | Field | rho | auto-accepted at ≥0.90 | wrong among them |
@@ -191,6 +197,9 @@ exist?
 **Method.** Look up every non-UNKNOWN `scientificName` from the gpt-4o-mini
 extraction against the GBIF taxonomic backbone. A name GBIF cannot match at any rank
 is not a real name.
+
+> **Superseded by 4.6.** This count included real species with a capitalised
+> epithet, which GBIF does not match. The corrected figure is 12.3%.
 
 **Result.** 15 of 133 names, **11.3%**, cannot be matched. Roughly one in nine
 scientific names the pipeline produces is a binomial that does not exist.
@@ -380,6 +389,9 @@ model read the label.
 **Best result: 85.3%** (Opus 4.8). Nothing reached 92%.
 
 ## 2.4 Hallucination rate
+
+> **The invented column is superseded by 4.6.** It counted a capitalised species
+> epithet as fabricated. Corrected: Sonnet 5 is 0.8%, not 1.3%.
 
 **Question.** Accuracy says whether an answer is wrong. It does not say whether the
 model misread the label or invented something. Which models fabricate?
@@ -602,3 +614,259 @@ agreement: a weak primary makes any checker look strong.
 | Sonnet 4.6 checker (`eventDate`, `recordedBy`) | $6.56 |
 | Azure OCR + 1 gpt-4o-mini (`barcode`) | $2.00 |
 | **all five fields scored** | **$19.90** |
+
+
+---
+
+# Part 3 — Google pipeline (Google Document AI + gpt-4o-mini)
+
+## 3.1 Bringing the pipeline back and giving it the taxon correction
+
+**Question.** The Google pipeline had not run since the cloud project it used was
+lost. Does it still work, and is it comparable with the other two?
+
+**Method.** New Google Cloud project, Document AI processor, and service-account
+credentials. Then a diff against `doc_intelligence.py` to find what the two OCR
+pipelines did differently.
+
+**Result.** One difference mattered: `google_vision.py` never applied the GBIF taxon
+correction. It imported `build_confidence` but not `GbifTaxonMatcher`, so it shipped
+whatever binomial the model produced, including authorities and synonyms. Every other
+pipeline snaps the name to GBIF's accepted species and keeps the original in
+`verbatimScientificName`.
+
+Ported and verified on five specimens: four names were rewritten (authorities
+stripped, `Osmunda regalis var. spectabilis` became `Osmunda spectabilis`), and the
+fifth, a misread `Cuphrasia kortkomiana`, was correctly left alone and flagged `NONE`.
+
+One difference was left in place: Azure's prompt asks for a structured location object
+and is given per-token OCR confidences; Google's uses few-shot examples and asks for a
+flat string. Changing it would make cached runs incomparable.
+
+**Decision.** Correction ported. The prompt difference is recorded as a confound: the
+Azure/Google comparison below is "Google's OCR and prompt" against "Azure's OCR and
+prompt", not an isolated OCR comparison.
+
+
+## 3.2 Accuracy against the other two pipelines
+
+**Question.** Where does Google land?
+
+**Method.** `nbs/model_compare.py` on the 150 specimens common to all three caches,
+same ground truth, GBIF correction applied to every pipeline.
+
+**Result.**
+
+| Field | Azure | Google | Anthropic |
+|---|---:|---:|---:|
+| `scientificName` | 71.4% | 76.9% | **85.3%** |
+| `eventDate` | 78.9% | 76.7% | **87.2%** |
+| `recordedBy` | **75.3%** | 71.5% | 75.0% |
+| `barcode` | 90.5% | 89.1% | **91.3%** |
+| `location` | 54.5% | 65.7% | **85.6%** |
+| **mean** | 74.1% | **76.0%** | **84.9%** |
+| **$/1,000 (extraction)** | $2.00 | $2.00 | $11.34 |
+
+**Google beats the shipped production pipeline at the same extraction cost**, and at
+less than half the cost once confidence is included ($3.00 against $4.50). Both use
+the same language model. The gap is concentrated in `location` (+11.2) and
+`scientificName` (+5.5) — the two fields where an OCR miss leaves the model completing
+a fragment with no way to check it.
+
+**Decision.** Google becomes the recommended default for bulk work, replacing Azure.
+
+
+## 3.3 Building its confidence layer
+
+**Question.** Google shipped with two signal sources against Azure's four. What is
+worth adding?
+
+**Method.** The vision cross-read is a gpt-4o-mini read of the *image*, so it does not
+depend on which OCR engine produced the text — the existing cache could be scored
+against Google for free. Self-consistency needed a new cache (about $0.25 on 150).
+
+**Result.** Mean AUC, where 0.50 is a coin flip:
+
+| | grounding + GBIF | + vision | + self-consistency |
+|---|---:|---:|---:|
+| mean AUC | 0.641 | **0.730** | 0.747 |
+
+Vision bought +0.089 for about $1.00 per 1,000. Self-consistency added +0.017 for
+$1.50 to $2.50, almost all of it `barcode` (0.646 to 0.725).
+
+**Decision.** Vision shipped, self-consistency not. The gain does not justify doubling
+the confidence cost, and `barcode` calibrates without it — its isotonic fit collapses
+to a single level *with* self-consistency and holds without it. Google ships three
+signal sources at $3.00 per 1,000.
+
+
+---
+
+# Part 4 — Calibration policy
+
+## 4.1 Confidence means different things in different collections
+
+**Question.** All calibration is fitted on `gbif-ne-500`. Does a map fitted there mean
+the same thing elsewhere?
+
+**Method.** Scored the Azure `location` signal on 148 New England specimens drawn from
+a different institution mix — the twelve largest herbaria, against a training set that
+is half Yale and the New England Botanical Club.
+
+**Result.** The same signal, the same metric, different specimens:
+
+| | accuracy |
+|---|---:|
+| Training mix (amateur-heavy, handwritten labels) | 39% |
+| Holdout mix (large herbaria, printed labels) | 75% |
+
+Nearly double, purely from provenance. A map fitted on one and applied to the other is
+wrong by up to 56 points.
+
+**Decision.** This is the finding that drives 4.2. A single global map cannot be
+correct for both, so it must at least be wrong in the safe direction.
+
+
+## 4.2 Making the maps conservative
+
+**Question.** Given 4.1, which way should a map err?
+
+**Method.** Under-confidence wastes reviewer time. Over-confidence tells someone a
+field is safe when it is not, and the error enters the database unseen. Only the
+second is harmful, so the maps should never over-state.
+
+Each isotonic level now ships the lower end of a one-sided 90% interval on the
+observed rate rather than the rate itself. Blocks with few observations shrink most,
+which is where over-confidence comes from: 7 observations at 100% ship as 0.81, while
+130 at 92% barely move.
+
+**Result.** Two changes to the fitting machinery were required.
+
+Standard calibration error penalises under-confidence exactly as much as
+over-confidence, so it rejected every conservative map as worse. Replaced with a
+one-sided version counting only over-statement: an under-confident map scores 0.00, an
+over-confident one still scores in full.
+
+The lower bound is applied per block *after* PAVA, and it shrinks small blocks hardest
+— so a sparse high block can fall below a dense low one, producing a map where a
+higher raw score maps to a lower probability. Both fitters now re-impose a running
+floor. All 15 field/pipeline maps are monotonic.
+
+**Decision.** Conservative fitting is the default; `--point-estimate` opts out. The
+cost is coverage: at a 0.90 cutoff most fields now go to a human. 0.80 to 0.85 is the
+useful range, and the tool exposes a slider so a collection can choose.
+
+
+## 4.3 Validating on specimens never fitted on
+
+**Question.** Every calibration figure so far comes from repeated splits of the
+training set, and `min_count` was chosen by looking at those splits. Do the maps hold
+on data nobody tuned against?
+
+**Method.** 148 specimens drawn from the 8M-row GBIF export, disjoint from
+`gbif-ne-500`, `hand-50`, NE-50 and `raw-images`. Scored each pipeline exactly as it
+ships. `nbs/validate_on_holdout.py`.
+
+**Result.** **Nothing over-states, on any field, on any pipeline.** Among values above
+a 0.90 cutoff, claimed and delivered agree within 5 points everywhere.
+
+The high `location` errors on this set — 0.33 Azure, 0.24 Google — are
+*under*-statement: the maps claim far less than they deliver on this specimen mix.
+Safe, but wasteful.
+
+**Decision.** The conservative guarantee holds. One caveat recorded: this set was
+drawn with `--institutions 12`, which selects the largest herbaria and so is easier
+than the training data. It verifies that nothing over-states — that answer holds
+regardless of difficulty — but it understates how much review the tool can save. A
+redraw matching the training mix is pending. **Never fit on it**; a holdout is only
+useful while untouched.
+
+
+## 4.4 Behaviour on specimens unlike anything in the eval set
+
+**Question.** A user can upload anything. What happens on sheets from outside New
+England?
+
+**Method.** 51 globally distributed specimens — Russia, France, Brazil, Indonesia —
+with zero occid overlap with the eval set. Ground truth covers `scientificName` and
+`recordedBy` only.
+
+**Result.**
+
+| | in-domain | out-of-domain |
+|---|---:|---:|
+| `scientificName`, Azure / Google / Anthropic | 71 / 77 / 85% | 73 / 87 / 87% |
+| `recordedBy`, Azure / Google | 76 / 72% | 55 / 48% |
+
+`scientificName` improves everywhere — non-US herbaria used printed labels far more
+than 19th-century New England collectors. `recordedBy` falls 20 points or more because
+its collector gazetteer is built from the GBIF eval set, so a collector outside it has
+no reference.
+
+Calibration held and was **conservative**: Anthropic's gap was -0.01, Google
+under-claimed by 0.24. Nothing over-stated at the top of any range.
+
+**Decision.** Unfamiliar specimens produce *less* confidence and more review, not
+misplaced confidence. That is the failure mode we want. No change shipped.
+
+
+## 4.5 Hand-labelled ground truth: a 40-specimen trial
+
+**Question.** All ground truth comes from GBIF, and `scientificName`'s strongest
+confidence signal is a GBIF backbone match, so that field is partly graded by its own
+source. How much does that inflate the numbers?
+
+**Method.** 40 specimens sampled across 40 institutions, labelled from the images by a
+non-expert using `nbs/label_tool.py`, which shuffles pipeline candidates and hides
+their source. Scored the pipelines against both truth sets.
+
+**Result.** Against hand labels, Anthropic's `scientificName` appeared to fall from
+97% to 72%. Examining all ten disagreements: **none were pipeline errors.** Four were
+transcription slips by the labeller (`Gabzum triftorum` for *Galium triflorum*), two
+were genus abbreviations (`S. subsecundum`), and four were synonyms where the pipeline
+gave today's accepted name and the label gave what the sheet says.
+
+The measured non-expert error rate on cursive species names is about **11%**.
+
+**Decision.** No inflation detected — but not confirmed either. A truth set 11% wrong
+cannot validate a pipeline claiming 85%; the noise exceeds the effect. Closing this
+needs a botanist on the species column, roughly twenty minutes of expert time.
+
+A deeper limit was recorded: `scientificName` **cannot be hand-labelled independently
+even in principle**. Deciding whether *Jamesoniella autumnalis* (what the sheet says)
+or *Syzygiella autumnalis* (today's accepted name) is correct requires a taxonomic
+authority, and the authority is GBIF. The pipelines already store both, so reading and
+normalisation should be scored as separate questions.
+
+
+## 4.6 Correction to 1.7 and 2.4 — the fabrication metric was measuring capitalisation
+
+**Question.** Re-measuring the invented-species rate on a larger common set gave a
+different answer from 2.4. Which is right?
+
+**Method.** Inspected every name counted as invented.
+
+**Result.** They were real species with the epithet capitalised — `Rumex Acetosella`,
+`Geranium Robertianum`, `Euphorbia Cyparissias L.` — a 19th-century labelling
+convention. GBIF returns `NONE` for that form, so a correctly read name counted as
+fabricated.
+
+It penalised Claude hardest **because Claude transcribes the label faithfully** while
+gpt-4o-mini silently normalises the case. The metric was rewarding the less accurate
+behaviour.
+
+Corrected rates on 239 specimens, after retrying each unmatched name with a lowercased
+epithet:
+
+| Pipeline | reported in 1.7 / 2.4 | corrected |
+|---|---:|---:|
+| Azure (gpt-4o-mini) | 11.3% | **12.3%** |
+| Google | not measured | 6.0% |
+| Claude Sonnet 5 | 1.3% | **0.8%** |
+
+The gap between Anthropic and Azure is fifteenfold, not fourfold.
+
+**Decision.** `GbifTaxonMatcher.match` retries with a lowercased epithet. This also
+fixes the taxon correction and the `scientificName` confidence signal for those names,
+both of which previously read `NONE` for a correct answer. **Sections 1.7 and 2.4
+above are superseded by this table.**

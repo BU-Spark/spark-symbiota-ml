@@ -10,7 +10,7 @@ the strongest signal for their field. Without them a field degrades to the best
 signal available from OCR alone (eventDate -> date validity, scientificName ->
 grounding). Default output is one float per field; detail mode adds a dict.
 
-Per-field signals, measurements, and the runbook: docs/azure-confidence-pipeline.md
+Per-field signals, calibration, and the runbook: docs/confidence.md
 """
 
 import datetime

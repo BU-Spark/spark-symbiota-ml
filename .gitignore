@@ -221,9 +221,9 @@ nbs/*
 # Credential check
 !nbs/check_google_creds.py
 # Fit the shipped calibration maps
+!nbs/fit_all_calibration.py
 !nbs/fit_calibration_google.py
 !nbs/fit_recordedby_calibration.py
-!nbs/refit_location_calibration.py
 # Validation cited in the status report
 !nbs/validate_on_holdout.py
 !nbs/out_of_domain_eval.py
