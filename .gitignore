@@ -239,7 +239,6 @@ transcription/data/holdout-200/
 # Confidence-signal caches (regenerable from GBIF / vision / self-consistency)
 transcription/results/vision_cache/
 transcription/results/self_consistency_cache/
-transcription/results/gbif_taxon_full.json
 transcription/results/gbif_taxon_match.json
 transcription/results/gbif_admin_location.json
 transcription/results/gbif_region_count.json

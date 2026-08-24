@@ -45,13 +45,20 @@ def _vision_read(image_path: str):
         v["location"] = _flatten_location(v["location"])
     return v
 
-# code adapted from spring 2024 ml team 
-openai.api_key = os.environ["OPENAI_API_KEY"] 
+# code adapted from spring 2024 ml team
+
 
 # DOCUMENT AI DETAILS
-project_id = os.environ["GOOGLE_PROJECT_ID"]
-processor_id = os.environ["GOOGLE_PROCESSOR_ID"]
-location = os.environ.get("GOOGLE_LOCATION", "us")
+def _docai_config():
+    """Project, processor and region, read at call time."""
+    missing = [v for v in ("GOOGLE_PROJECT_ID", "GOOGLE_PROCESSOR_ID")
+               if not os.environ.get(v)]
+    if missing:
+        raise RuntimeError("Google Document AI is not configured: "
+                           + ", ".join(missing) + " not set")
+    return (os.environ["GOOGLE_PROJECT_ID"],
+            os.environ["GOOGLE_PROCESSOR_ID"],
+            os.environ.get("GOOGLE_LOCATION", "us"))
 
 # few shot examples 
 shots = \
@@ -186,6 +193,7 @@ def _layout_text(layout, full_text: str) -> str:
 
 # main document AI processor
 def batch_process_documents(file_path: str, file_mime_type: str) -> tuple:
+    project_id, processor_id, location = _docai_config()
     opts = ClientOptions(api_endpoint=f"{location}-documentai.googleapis.com")
     client = documentai.DocumentProcessorServiceClient(client_options=opts)
 

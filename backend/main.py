@@ -40,12 +40,23 @@ def _ceilings(pipeline: str) -> dict:
     return {f: max(y for _, y in knots) for f, knots in cal.items()}
 
 
+MAX_UPLOAD_BYTES = 40 * 1024 * 1024
+
+
 def _fetch(url: str, path: str):
     try:
-        r = requests.get(url, timeout=DOWNLOAD_TIMEOUT)
-        r.raise_for_status()
-        with open(path, "wb") as f:
-            f.write(r.content)
+        with requests.get(url, timeout=DOWNLOAD_TIMEOUT, stream=True) as r:
+            r.raise_for_status()
+            size = 0
+            with open(path, "wb") as f:
+                for chunk in r.iter_content(1024 * 1024):
+                    size += len(chunk)
+                    if size > MAX_UPLOAD_BYTES:
+                        raise HTTPException(status_code=413,
+                                            detail="Image larger than 40MB")
+                    f.write(chunk)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Could not fetch image: {e}")
     try:
@@ -53,9 +64,6 @@ def _fetch(url: str, path: str):
             img.verify()
     except Exception:
         raise HTTPException(status_code=400, detail="Downloaded file is not a valid image")
-
-
-MAX_UPLOAD_BYTES = 40 * 1024 * 1024
 
 
 def _save_upload(upload: UploadFile, path: str):
@@ -197,7 +205,11 @@ def compare(url: str = Query(None), pipelines: str = Query(None),
             try:
                 raw = PIPELINES[name](path)
                 data = json.loads(raw)
-                out[name] = {"ok": True, "envelope": to_middleware_envelope(data, model=name)}
+                if isinstance(data, dict) and data.get("_error"):
+                    out[name] = {"ok": False, "error": str(data["_error"])[:200]}
+                else:
+                    out[name] = {"ok": True,
+                                 "envelope": to_middleware_envelope(data, model=name)}
             except Exception as e:
                 out[name] = {"ok": False, "error": str(e)[:200]}
     finally:

@@ -40,12 +40,22 @@ class _Resp:
     def raise_for_status(self):
         pass
 
+    def iter_content(self, chunk_size):
+        for i in range(0, len(self.content), chunk_size):
+            yield self.content[i:i + chunk_size]
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
 
 def _run_concurrent(endpoint):
     bodies = {f"http://example.invalid/{i}": _png(i * 37) for i in range(8)}
     expect = {u: hashlib.sha1(b).hexdigest() for u, b in bodies.items()}
 
-    def fake_get(url, timeout=None):
+    def fake_get(url, timeout=None, stream=False):
         threading.Event().wait(DELAY)
         return _Resp(bodies[url])
 
@@ -151,7 +161,7 @@ def test_ceilings_are_probabilities():
 
 
 def test_bad_image_is_rejected_without_leaking():
-    def fake_get(url, timeout=None):
+    def fake_get(url, timeout=None, stream=False):
         return _Resp(b"this is not an image")
 
     with patch.object(m, "requests") as rq:
@@ -184,8 +194,56 @@ def test_review_logging(tmp_path=None):
         m.REVIEWS = original
 
 
+def test_fetch_is_capped_like_upload():
+    big = b"\x00" * (m.MAX_UPLOAD_BYTES + 1024)
+
+    def fake_get(url, timeout=None, stream=False):
+        return _Resp(big)
+
+    with patch.object(m, "requests") as rq:
+        rq.get = fake_get
+        resp = TestClient(m.app).post("/azure", params={"url": "http://example.invalid/big"})
+    assert resp.status_code == 413, resp.text
+
+
+def test_compare_reports_a_pipeline_that_returns_an_error_payload():
+    def failing(path):
+        return json.dumps({"_error": "Document AI is not configured"})
+
+    def working(path):
+        return json.dumps({"scientificName": "Rumex acetosella", "confidence": {}})
+
+    with patch.dict(m.PIPELINES, {"azure": working, "google": failing}):
+        r = TestClient(m.app).post("/compare?pipelines=azure,google",
+                                   files={"file": ("s.jpg", _png(3), "image/jpeg")})
+    assert r.status_code == 200, r.text
+    res = r.json()["results"]
+    assert res["azure"]["ok"]
+    assert not res["google"]["ok"], "an _error payload was reported as a good read"
+    assert "not configured" in res["google"]["error"]
+
+
+def test_google_import_does_not_need_its_env_vars():
+    import transcription.google_vision as gv
+    saved = {v: os.environ.pop(v, None)
+             for v in ("GOOGLE_PROJECT_ID", "GOOGLE_PROCESSOR_ID")}
+    try:
+        try:
+            gv._docai_config()
+            assert False, "expected a configuration error"
+        except RuntimeError as e:
+            assert "GOOGLE_PROJECT_ID" in str(e)
+    finally:
+        for k, v in saved.items():
+            if v is not None:
+                os.environ[k] = v
+
+
 if __name__ == "__main__":
     test_concurrent_requests_do_not_share_a_temp_file()
+    test_fetch_is_capped_like_upload()
+    test_compare_reports_a_pipeline_that_returns_an_error_payload()
+    test_google_import_does_not_need_its_env_vars()
     test_bad_image_is_rejected_without_leaking()
     test_every_pipeline_has_an_endpoint()
     test_upload_works_on_every_pipeline()
