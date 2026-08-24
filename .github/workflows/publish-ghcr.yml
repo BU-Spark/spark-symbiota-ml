@@ -1,0 +1,121 @@
+# Build this image and publish it to GHCR under BU-Spark.
+#
+# Part of issue #17 (se-symbiota-private): move all three Herbaria images
+# (symbiota, OCR middleware, this ML service) off quay.io/langdon onto
+# ghcr.io/bu-spark, each following the same per-repo, per-env-branch model.
+#
+# Unlike se-symbiota, this repo is not a fork -- Actions work here natively,
+# so this workflow lives directly in the repo whose Dockerfile it builds,
+# rather than needing a workaround like publish-symbiota-ghcr.yml in
+# se-symbiota-private.
+#
+# int auto-builds AND auto-deploys on push (the deploy side is wired via
+# herbaria_runtime's webhook hook in se-symbiota-private, not here). alpha
+# auto-builds on push too, but nothing consumes an alpha-tagged publish
+# automatically -- promoting it to the alpha host stays a deliberate,
+# separate action.
+#
+# Note on injection: every ${{ }} that reaches a `run:` block is passed
+# through `env:` first. Dispatch inputs are controllable by anyone with
+# write access to this repo.
+
+name: Publish image to GHCR
+
+on:
+  push:
+    branches: [int, alpha]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Ref to build (branch, tag or SHA)"
+        required: true
+        default: int
+      tag:
+        description: "Image tag to publish (defaults to a slug of the ref)"
+        required: false
+        type: string
+
+concurrency:
+  group: publish-${{ github.event.inputs.ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Resolve inputs
+        id: vars
+        env:
+          REF: ${{ github.event.inputs.ref || github.ref_name }}
+          TAG: ${{ github.event.inputs.tag }}
+        run: |
+          set -euo pipefail
+          ref="${REF}"
+          # Push events already give us a plain branch name via ref_name;
+          # only slugify when a dispatch ref needs it (may contain '/').
+          tag="${TAG:-$(printf '%s' "$ref" | tr '/' '-' | tr -cd 'A-Za-z0-9._-')}"
+          if [[ ! "$ref" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]{0,254}$ ]]; then
+            echo "::error::ref contains unsupported characters or length"
+            exit 1
+          fi
+          if [[ ! "$tag" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]]; then
+            echo "::error::tag is not a valid container tag"
+            exit 1
+          fi
+          printf 'ref=%s\ntag=%s\n' "$ref" "$tag" >> "$GITHUB_OUTPUT"
+          echo "Building $ref -> :$tag"
+
+      - name: Check out the source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.vars.outputs.ref }}
+          persist-credentials: false
+
+      - name: Record source commit
+        id: source
+        run: printf 'sha=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ghcr.io/bu-spark/spark-symbiota-ml:${{ steps.vars.outputs.tag }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/BU-Spark/spark-symbiota-ml
+            org.opencontainers.image.revision=${{ steps.source.outputs.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Summary
+        env:
+          IMAGE_REF: ghcr.io/bu-spark/spark-symbiota-ml:${{ steps.vars.outputs.tag }}
+          SOURCE_REF: ${{ steps.vars.outputs.ref }}
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        run: |
+          {
+            echo "### Published"
+            echo '```'
+            echo "$IMAGE_REF"
+            echo '```'
+            echo "Built from $SOURCE_REF ($SOURCE_SHA)"
+          } >> "$GITHUB_STEP_SUMMARY"
