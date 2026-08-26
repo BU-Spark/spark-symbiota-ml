@@ -1,0 +1,818 @@
+{
+ "azure": {
+  "scientificName": {
+   "ceiling": 0.9422,
+   "calibrated": true,
+   "levels": [
+    {
+     "cut": 0.5,
+     "coverage": 0.797,
+     "precision": 0.8774,
+     "n": 133
+    },
+    {
+     "cut": 0.6,
+     "coverage": 0.782,
+     "precision": 0.875,
+     "n": 133
+    },
+    {
+     "cut": 0.7,
+     "coverage": 0.6842,
+     "precision": 0.9011,
+     "n": 133
+    },
+    {
+     "cut": 0.75,
+     "coverage": 0.6316,
+     "precision": 0.9048,
+     "n": 133
+    },
+    {
+     "cut": 0.8,
+     "coverage": 0.5489,
+     "precision": 0.9315,
+     "n": 133
+    },
+    {
+     "cut": 0.85,
+     "coverage": 0.4286,
+     "precision": 0.9474,
+     "n": 133
+    },
+    {
+     "cut": 0.9,
+     "coverage": 0.3083,
+     "precision": 0.9268,
+     "n": 133
+    },
+    {
+     "cut": 0.95,
+     "coverage": 0.0,
+     "precision": null,
+     "n": 133
+    }
+   ]
+  },
+  "eventDate": {
+   "ceiling": 0.9011,
+   "calibrated": true,
+   "levels": [
+    {
+     "cut": 0.5,
+     "coverage": 0.8095,
+     "precision": 0.8739,
+     "n": 147
+    },
+    {
+     "cut": 0.6,
+     "coverage": 0.7279,
+     "precision": 0.8598,
+     "n": 147
+    },
+    {
+     "cut": 0.7,
+     "coverage": 0.6531,
+     "precision": 0.875,
+     "n": 147
+    },
+    {
+     "cut": 0.75,
+     "coverage": 0.4898,
+     "precision": 0.9028,
+     "n": 147
+    },
+    {
+     "cut": 0.8,
+     "coverage": 0.3265,
+     "precision": 0.9375,
+     "n": 147
+    },
+    {
+     "cut": 0.85,
+     "coverage": 0.3197,
+     "precision": 0.9362,
+     "n": 147
+    },
+    {
+     "cut": 0.9,
+     "coverage": 0.3197,
+     "precision": 0.9362,
+     "n": 147
+    },
+    {
+     "cut": 0.95,
+     "coverage": 0.0,
+     "precision": null,
+     "n": 147
+    }
+   ]
+  },
+  "recordedBy": {
+   "ceiling": 0.8638,
+   "calibrated": true,
+   "levels": [
+    {
+     "cut": 0.5,
+     "coverage": 0.7397,
+     "precision": 0.8611,
+     "n": 146
+    },
+    {
+     "cut": 0.6,
+     "coverage": 0.6644,
+     "precision": 0.8557,
+     "n": 146
+    },
+    {
+     "cut": 0.7,
+     "coverage": 0.4932,
+     "precision": 0.9028,
+     "n": 146
+    },
+    {
+     "cut": 0.75,
+     "coverage": 0.2603,
+     "precision": 0.8947,
+     "n": 146
+    },
+    {
+     "cut": 0.8,
+     "coverage": 0.2123,
+     "precision": 0.9032,
+     "n": 146
+    },
+    {
+     "cut": 0.85,
+     "coverage": 0.1986,
+     "precision": 0.8966,
+     "n": 146
+    },
+    {
+     "cut": 0.9,
+     "coverage": 0.0,
+     "precision": null,
+     "n": 146
+    },
+    {
+     "cut": 0.95,
+     "coverage": 0.0,
+     "precision": null,
+     "n": 146
+    }
+   ]
+  },
+  "barcode": {
+   "ceiling": 0.8825,
+   "calibrated": true,
+   "levels": [
+    {
+     "cut": 0.5,
+     "coverage": 0.8844,
+     "precision": 0.9615,
+     "n": 147
+    },
+    {
+     "cut": 0.6,
+     "coverage": 0.8844,
+     "precision": 0.9615,
+     "n": 147
+    },
+    {
+     "cut": 0.7,
+     "coverage": 0.8844,
+     "precision": 0.9615,
+     "n": 147
+    },
+    {
+     "cut": 0.75,
+     "coverage": 0.8844,
+     "precision": 0.9615,
+     "n": 147
+    },
+    {
+     "cut": 0.8,
+     "coverage": 0.8844,
+     "precision": 0.9615,
+     "n": 147
+    },
+    {
+     "cut": 0.85,
+     "coverage": 0.8844,
+     "precision": 0.9615,
+     "n": 147
+    },
+    {
+     "cut": 0.9,
+     "coverage": 0.0,
+     "precision": null,
+     "n": 147
+    },
+    {
+     "cut": 0.95,
+     "coverage": 0.0,
+     "precision": null,
+     "n": 147
+    }
+   ]
+  },
+  "location": {
+   "ceiling": 0.5753,
+   "calibrated": true,
+   "levels": [
+    {
+     "cut": 0.5,
+     "coverage": 0.0145,
+     "precision": 1.0,
+     "n": 138
+    },
+    {
+     "cut": 0.6,
+     "coverage": 0.0,
+     "precision": null,
+     "n": 138
+    },
+    {
+     "cut": 0.7,
+     "coverage": 0.0,
+     "precision": null,
+     "n": 138
+    },
+    {
+     "cut": 0.75,
+     "coverage": 0.0,
+     "precision": null,
+     "n": 138
+    },
+    {
+     "cut": 0.8,
+     "coverage": 0.0,
+     "precision": null,
+     "n": 138
+    },
+    {
+     "cut": 0.85,
+     "coverage": 0.0,
+     "precision": null,
+     "n": 138
+    },
+    {
+     "cut": 0.9,
+     "coverage": 0.0,
+     "precision": null,
+     "n": 138
+    },
+    {
+     "cut": 0.95,
+     "coverage": 0.0,
+     "precision": null,
+     "n": 138
+    }
+   ]
+  }
+ },
+ "google": {
+  "scientificName": {
+   "ceiling": 0.9036,
+   "calibrated": true,
+   "levels": [
+    {
+     "cut": 0.5,
+     "coverage": 0.6463,
+     "precision": 0.9053,
+     "n": 147
+    },
+    {
+     "cut": 0.6,
+     "coverage": 0.5714,
+     "precision": 0.9048,
+     "n": 147
+    },
+    {
+     "cut": 0.7,
+     "coverage": 0.4966,
+     "precision": 0.8904,
+     "n": 147
+    },
+    {
+     "cut": 0.75,
+     "coverage": 0.4354,
+     "precision": 0.9375,
+     "n": 147
+    },
+    {
+     "cut": 0.8,
+     "coverage": 0.381,
+     "precision": 0.9464,
+     "n": 147
+    },
+    {
+     "cut": 0.85,
+     "coverage": 0.3129,
+     "precision": 0.9348,
+     "n": 147
+    },
+    {
+     "cut": 0.9,
+     "coverage": 0.2857,
+     "precision": 0.9286,
+     "n": 147
+    },
+    {
+     "cut": 0.95,
+     "coverage": 0.0,
+     "precision": null,
+     "n": 147
+    }
+   ]
+  },
+  "eventDate": {
+   "ceiling": 0.8062,
+   "calibrated": true,
+   "levels": [
+    {
+     "cut": 0.5,
+     "coverage": 0.9315,
+     "precision": 0.8015,
+     "n": 146
+    },
+    {
+     "cut": 0.6,
+     "coverage": 0.8699,
+     "precision": 0.8268,
+     "n": 146
+    },
+    {
+     "cut": 0.7,
+     "coverage": 0.5137,
+     "precision": 0.8533,
+     "n": 146
+    },
+    {
+     "cut": 0.75,
+     "coverage": 0.4658,
+     "precision": 0.8676,
+     "n": 146
+    },
+    {
+     "cut": 0.8,
+     "coverage": 0.3219,
+     "precision": 0.8511,
+     "n": 146
+    },
+    {
+     "cut": 0.85,
+     "coverage": 0.0,
+     "precision": null,
+     "n": 146
+    },
+    {
+     "cut": 0.9,
+     "coverage": 0.0,
+     "precision": null,
+     "n": 146
+    },
+    {
+     "cut": 0.95,
+     "coverage": 0.0,
+     "precision": null,
+     "n": 146
+    }
+   ]
+  },
+  "recordedBy": {
+   "ceiling": 0.8421,
+   "calibrated": true,
+   "levels": [
+    {
+     "cut": 0.5,
+     "coverage": 0.5903,
+     "precision": 0.8824,
+     "n": 144
+    },
+    {
+     "cut": 0.6,
+     "coverage": 0.5417,
+     "precision": 0.8846,
+     "n": 144
+    },
+    {
+     "cut": 0.7,
+     "coverage": 0.4861,
+     "precision": 0.9143,
+     "n": 144
+    },
+    {
+     "cut": 0.75,
+     "coverage": 0.4375,
+     "precision": 0.9048,
+     "n": 144
+    },
+    {
+     "cut": 0.8,
+     "coverage": 0.3542,
+     "precision": 0.902,
+     "n": 144
+    },
+    {
+     "cut": 0.85,
+     "coverage": 0.0,
+     "precision": null,
+     "n": 144
+    },
+    {
+     "cut": 0.9,
+     "coverage": 0.0,
+     "precision": null,
+     "n": 144
+    },
+    {
+     "cut": 0.95,
+     "coverage": 0.0,
+     "precision": null,
+     "n": 144
+    }
+   ]
+  },
+  "barcode": {
+   "ceiling": 0.8876,
+   "calibrated": true,
+   "levels": [
+    {
+     "cut": 0.5,
+     "coverage": 0.898,
+     "precision": 0.9394,
+     "n": 147
+    },
+    {
+     "cut": 0.6,
+     "coverage": 0.898,
+     "precision": 0.9394,
+     "n": 147
+    },
+    {
+     "cut": 0.7,
+     "coverage": 0.898,
+     "precision": 0.9394,
+     "n": 147
+    },
+    {
+     "cut": 0.75,
+     "coverage": 0.898,
+     "precision": 0.9394,
+     "n": 147
+    },
+    {
+     "cut": 0.8,
+     "coverage": 0.898,
+     "precision": 0.9394,
+     "n": 147
+    },
+    {
+     "cut": 0.85,
+     "coverage": 0.898,
+     "precision": 0.9394,
+     "n": 147
+    },
+    {
+     "cut": 0.9,
+     "coverage": 0.0,
+     "precision": null,
+     "n": 147
+    },
+    {
+     "cut": 0.95,
+     "coverage": 0.0,
+     "precision": null,
+     "n": 147
+    }
+   ]
+  },
+  "location": {
+   "ceiling": 0.7597,
+   "calibrated": true,
+   "levels": [
+    {
+     "cut": 0.5,
+     "coverage": 0.4891,
+     "precision": 0.8209,
+     "n": 137
+    },
+    {
+     "cut": 0.6,
+     "coverage": 0.4672,
+     "precision": 0.8281,
+     "n": 137
+    },
+    {
+     "cut": 0.7,
+     "coverage": 0.0657,
+     "precision": 1.0,
+     "n": 137
+    },
+    {
+     "cut": 0.75,
+     "coverage": 0.0657,
+     "precision": 1.0,
+     "n": 137
+    },
+    {
+     "cut": 0.8,
+     "coverage": 0.0,
+     "precision": null,
+     "n": 137
+    },
+    {
+     "cut": 0.85,
+     "coverage": 0.0,
+     "precision": null,
+     "n": 137
+    },
+    {
+     "cut": 0.9,
+     "coverage": 0.0,
+     "precision": null,
+     "n": 137
+    },
+    {
+     "cut": 0.95,
+     "coverage": 0.0,
+     "precision": null,
+     "n": 137
+    }
+   ]
+  }
+ },
+ "anthropic": {
+  "scientificName": {
+   "ceiling": 0.8916,
+   "calibrated": true,
+   "levels": [
+    {
+     "cut": 0.5,
+     "coverage": 0.94,
+     "precision": 0.8936,
+     "n": 150
+    },
+    {
+     "cut": 0.6,
+     "coverage": 0.9333,
+     "precision": 0.8929,
+     "n": 150
+    },
+    {
+     "cut": 0.7,
+     "coverage": 0.9333,
+     "precision": 0.8929,
+     "n": 150
+    },
+    {
+     "cut": 0.75,
+     "coverage": 0.9333,
+     "precision": 0.8929,
+     "n": 150
+    },
+    {
+     "cut": 0.8,
+     "coverage": 0.9333,
+     "precision": 0.8929,
+     "n": 150
+    },
+    {
+     "cut": 0.85,
+     "coverage": 0.9333,
+     "precision": 0.8929,
+     "n": 150
+    },
+    {
+     "cut": 0.9,
+     "coverage": 0.0,
+     "precision": null,
+     "n": 150
+    },
+    {
+     "cut": 0.95,
+     "coverage": 0.0,
+     "precision": null,
+     "n": 150
+    }
+   ]
+  },
+  "eventDate": {
+   "ceiling": 0.958,
+   "calibrated": true,
+   "levels": [
+    {
+     "cut": 0.5,
+     "coverage": 0.8919,
+     "precision": 0.9318,
+     "n": 148
+    },
+    {
+     "cut": 0.6,
+     "coverage": 0.6824,
+     "precision": 0.9406,
+     "n": 148
+    },
+    {
+     "cut": 0.7,
+     "coverage": 0.6081,
+     "precision": 0.9556,
+     "n": 148
+    },
+    {
+     "cut": 0.75,
+     "coverage": 0.6014,
+     "precision": 0.9551,
+     "n": 148
+    },
+    {
+     "cut": 0.8,
+     "coverage": 0.5541,
+     "precision": 0.9756,
+     "n": 148
+    },
+    {
+     "cut": 0.85,
+     "coverage": 0.4662,
+     "precision": 1.0,
+     "n": 148
+    },
+    {
+     "cut": 0.9,
+     "coverage": 0.3716,
+     "precision": 1.0,
+     "n": 148
+    },
+    {
+     "cut": 0.95,
+     "coverage": 0.3716,
+     "precision": 1.0,
+     "n": 148
+    }
+   ]
+  },
+  "recordedBy": {
+   "ceiling": 0.9033,
+   "calibrated": true,
+   "levels": [
+    {
+     "cut": 0.5,
+     "coverage": 0.8058,
+     "precision": 0.8571,
+     "n": 139
+    },
+    {
+     "cut": 0.6,
+     "coverage": 0.7986,
+     "precision": 0.8559,
+     "n": 139
+    },
+    {
+     "cut": 0.7,
+     "coverage": 0.7986,
+     "precision": 0.8559,
+     "n": 139
+    },
+    {
+     "cut": 0.75,
+     "coverage": 0.7986,
+     "precision": 0.8559,
+     "n": 139
+    },
+    {
+     "cut": 0.8,
+     "coverage": 0.7914,
+     "precision": 0.8636,
+     "n": 139
+    },
+    {
+     "cut": 0.85,
+     "coverage": 0.3237,
+     "precision": 0.8667,
+     "n": 139
+    },
+    {
+     "cut": 0.9,
+     "coverage": 0.2374,
+     "precision": 0.8485,
+     "n": 139
+    },
+    {
+     "cut": 0.95,
+     "coverage": 0.0,
+     "precision": null,
+     "n": 139
+    }
+   ]
+  },
+  "barcode": {
+   "ceiling": 0.9315,
+   "calibrated": true,
+   "levels": [
+    {
+     "cut": 0.5,
+     "coverage": 0.9,
+     "precision": 0.963,
+     "n": 150
+    },
+    {
+     "cut": 0.6,
+     "coverage": 0.88,
+     "precision": 0.9697,
+     "n": 150
+    },
+    {
+     "cut": 0.7,
+     "coverage": 0.88,
+     "precision": 0.9697,
+     "n": 150
+    },
+    {
+     "cut": 0.75,
+     "coverage": 0.88,
+     "precision": 0.9697,
+     "n": 150
+    },
+    {
+     "cut": 0.8,
+     "coverage": 0.88,
+     "precision": 0.9697,
+     "n": 150
+    },
+    {
+     "cut": 0.85,
+     "coverage": 0.88,
+     "precision": 0.9697,
+     "n": 150
+    },
+    {
+     "cut": 0.9,
+     "coverage": 0.88,
+     "precision": 0.9697,
+     "n": 150
+    },
+    {
+     "cut": 0.95,
+     "coverage": 0.0,
+     "precision": null,
+     "n": 150
+    }
+   ]
+  },
+  "location": {
+   "ceiling": 0.8744,
+   "calibrated": true,
+   "levels": [
+    {
+     "cut": 0.5,
+     "coverage": 0.6389,
+     "precision": 0.837,
+     "n": 144
+    },
+    {
+     "cut": 0.6,
+     "coverage": 0.6389,
+     "precision": 0.837,
+     "n": 144
+    },
+    {
+     "cut": 0.7,
+     "coverage": 0.6389,
+     "precision": 0.837,
+     "n": 144
+    },
+    {
+     "cut": 0.75,
+     "coverage": 0.6389,
+     "precision": 0.837,
+     "n": 144
+    },
+    {
+     "cut": 0.8,
+     "coverage": 0.1736,
+     "precision": 0.92,
+     "n": 144
+    },
+    {
+     "cut": 0.85,
+     "coverage": 0.1736,
+     "precision": 0.92,
+     "n": 144
+    },
+    {
+     "cut": 0.9,
+     "coverage": 0.0,
+     "precision": null,
+     "n": 144
+    },
+    {
+     "cut": 0.95,
+     "coverage": 0.0,
+     "precision": null,
+     "n": 144
+    }
+   ]
+  }
+ }
+}

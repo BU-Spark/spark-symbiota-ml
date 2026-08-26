@@ -7,7 +7,6 @@ import openai
 import random
 import pandas as pd
 
-from utils import image_utils
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -16,17 +15,50 @@ load_dotenv(dotenv_path=env_path)
 
 # Works both as a script (cwd=transcription) and as a package import
 try:
-    from transcription.confidence import build_confidence, detail_enabled
+    from transcription.confidence import build_confidence, detail_enabled, GbifTaxonMatcher
+    from transcription.doc_intelligence import _enhanced_enabled as enhanced_enabled
 except ImportError:
-    from confidence import build_confidence, detail_enabled
+    from confidence import build_confidence, detail_enabled, GbifTaxonMatcher
+    from doc_intelligence import _enhanced_enabled as enhanced_enabled
 
-# code adapted from spring 2024 ml team 
-openai.api_key = os.environ["OPENAI_API_KEY"] 
+_TAXON_MATCHER = None
+
+
+def _taxon_matcher():
+    global _TAXON_MATCHER
+    if _TAXON_MATCHER is None:
+        _TAXON_MATCHER = GbifTaxonMatcher()
+    return _TAXON_MATCHER
+
+
+def _vision_read(image_path: str):
+    """Independent gpt-4o-mini read of the image. None on failure."""
+    try:
+        from doc_intelligence import vision_extract_fields, _flatten_location
+    except ImportError:
+        from transcription.doc_intelligence import vision_extract_fields, _flatten_location
+    v = vision_extract_fields(image_path)
+    if not v:
+        return None
+    v = dict(v)
+    if isinstance(v.get("location"), dict):
+        v["location"] = _flatten_location(v["location"])
+    return v
+
+# code adapted from spring 2024 ml team
+
 
 # DOCUMENT AI DETAILS
-project_id = os.environ["GOOGLE_PROJECT_ID"]
-processor_id = os.environ["GOOGLE_PROCESSOR_ID"]
-location = os.environ.get("GOOGLE_LOCATION", "us")
+def _docai_config():
+    """Project, processor and region, read at call time."""
+    missing = [v for v in ("GOOGLE_PROJECT_ID", "GOOGLE_PROCESSOR_ID")
+               if not os.environ.get(v)]
+    if missing:
+        raise RuntimeError("Google Document AI is not configured: "
+                           + ", ".join(missing) + " not set")
+    return (os.environ["GOOGLE_PROJECT_ID"],
+            os.environ["GOOGLE_PROCESSOR_ID"],
+            os.environ.get("GOOGLE_LOCATION", "us"))
 
 # few shot examples 
 shots = \
@@ -161,6 +193,7 @@ def _layout_text(layout, full_text: str) -> str:
 
 # main document AI processor
 def batch_process_documents(file_path: str, file_mime_type: str) -> tuple:
+    project_id, processor_id, location = _docai_config()
     opts = ClientOptions(api_endpoint=f"{location}-documentai.googleapis.com")
     client = documentai.DocumentProcessorServiceClient(client_options=opts)
 
@@ -202,7 +235,26 @@ def run_google_vision_pipeline(image_path: str):
             # purely from the OCR words (coverage / grounding).
             result.pop("confidence", None)
             result["image_path"] = image_path
-            result["confidence"] = build_confidence(result, words, detail=detail_enabled())
+
+            matcher = _taxon_matcher()
+            vision_fields = _vision_read(image_path) if enhanced_enabled() else None
+
+            # Scored before the GBIF correction, so a FUZZY read still scores low.
+            result["confidence"] = build_confidence(
+                result, words, vision_fields=vision_fields,
+                taxon_matcher=matcher, detail=detail_enabled(),
+                calibration="calibration_google",
+            )
+
+            # Snap to GBIF's accepted species, keeping the verbatim read.
+            raw_sci = result.get("scientificName", "")
+            if raw_sci and str(raw_sci).strip().upper() != "UNKNOWN":
+                corrected, match_type = matcher.correct(raw_sci)
+                result["_taxonMatchType"] = match_type
+                if corrected and corrected != raw_sci:
+                    result["verbatimScientificName"] = raw_sci
+                    result["scientificName"] = corrected
+
             return json.dumps(result)
 
         except Exception as e:

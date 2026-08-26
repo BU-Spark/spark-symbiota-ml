@@ -1,0 +1,10 @@
+# Specimens whose GBIF record was seen before hand-labelling.
+#
+# The hand labels exist to be independent of GBIF. Where the labeller saw GBIF's
+# values first, agreement between the two is inflated, so these specimens must be
+# excluded from the hand-vs-GBIF comparison and from any figure that rests on it.
+# They are still fine for anything not involving GBIF truth.
+#
+# One occid per line.
+
+1228515326

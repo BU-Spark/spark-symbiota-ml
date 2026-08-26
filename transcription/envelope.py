@@ -19,17 +19,19 @@ FIELD_TO_DWC = {
     "scientificName": "scientificName",   # GBIF-corrected accepted name (the shown value)
     "eventDate": "eventDate",
     "location": "locality",
-    "barcode": "catalogNumber",       # TODO: confirm exact DWC key with SWE team
+    "barcode": "catalogNumber",
     "institutionCode": "institutionCode",
 }
 
 # Fields whose confidence we currently ship. institutionCode omitted for now.
 CONFIDENCE_FIELDS = ["recordedBy", "scientificName", "eventDate", "location", "barcode"]
 
-# Per-field notes surfaced in _meta (e.g. so the UI can mark a weak signal).
+# Per-field notes surfaced in _meta. Only the Azure pipeline splits location into
+# parts, so only it can point at _meta.location_structured.
+_LOCALITY_NOTE = ("bundles locality, county and stateProvince; county/state may be "
+                  "inferred from the town")
 FIELD_NOTES = {
-    "locality": "bundles locality, county and stateProvince; county/state may be "
-                "inferred from the town -- see _meta.location_structured for the parts",
+    "locality": _LOCALITY_NOTE + " -- see _meta.location_structured for the parts",
 }
 
 SCHEMA_VERSION = 1
@@ -68,15 +70,16 @@ def to_middleware_envelope(result: dict, model: str = "azure") -> dict:
             confidence[FIELD_TO_DWC[our]] = v
     env["_confidence"] = confidence
 
+    structured = result.get("_locationStructured")
     meta = {
         "model": model,
         "schema_version": SCHEMA_VERSION,
-        "field_notes": FIELD_NOTES,
+        "field_notes": dict(FIELD_NOTES) if structured
+                       else {"locality": _LOCALITY_NOTE},
     }
-    # scientificName was GBIF-corrected: surface the raw read + match type in _meta
-    # (not as a flat field), so the contract shape is unchanged and the portal can
-    # optionally show "originally read as ...". taxon_match_type distinguishes a
-    # valid/synonym verbatim (EXACT) from a corrected misread (FUZZY).
+    # The raw read and match type ride in _meta rather than as flat fields, so the
+    # contract shape is unchanged. EXACT means the verbatim was a valid name or a
+    # synonym; FUZZY means it was a misread.
     if result.get("verbatimScientificName"):
         meta["verbatim_scientificName"] = result["verbatimScientificName"]
     if result.get("_taxonMatchType"):
@@ -84,7 +87,7 @@ def to_middleware_envelope(result: dict, model: str = "azure") -> dict:
     # location is shipped as one flat "locality, county, state" string (DWC locality);
     # the parsed admin parts ride in _meta so the portal can migrate to separate
     # stateProvince/county DWC fields without a pipeline change.
-    if result.get("_locationStructured"):
-        meta["location_structured"] = result["_locationStructured"]
+    if structured:
+        meta["location_structured"] = structured
     env["_meta"] = meta
     return env

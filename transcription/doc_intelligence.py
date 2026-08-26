@@ -141,11 +141,15 @@ def _flatten_location(loc):
 
 
 def _enhanced_enabled() -> bool:
-    # Gate the paid confidence signals (self-consistency + vision). When off,
+    # The paid confidence signals (self-consistency + vision) are ON BY DEFAULT:
+    # they are what gives every field a strong rho (~+0.37..+0.47). Without them
+    # eventDate/recordedBy/barcode discrimination roughly thirds (rho +0.12/+0.15/
+    # +0.20) -- too weak to route review on. Opt OUT for a cheaper, weaker score
+    # (e.g. a scientificName-only use case) with CONFIDENCE_ENHANCED=0. When off,
     # eventDate falls back to date validity and recordedBy to the collector
-    # gazetteer alone; the free signals (location, barcode, scientificName) are
-    # unaffected.
-    return os.environ.get("CONFIDENCE_ENHANCED", "").lower() in ("1", "true", "yes")
+    # gazetteer alone; scientificName/location/barcode keep their free signals.
+    return os.environ.get("CONFIDENCE_ENHANCED", "1").strip().lower() not in (
+        "0", "false", "no", "off", "")
 
 
 def _self_consistency_samples(document_content: str, k: int = 3):

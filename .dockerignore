@@ -11,16 +11,22 @@ venv/
 .git/
 .gitignore
 
-# Python caches
-__pycache__/
-*.py[cod]
-*.egg-info/
-.pytest_cache/
-.ipynb_checkpoints/
+# Python caches. `**/` is required; a bare pattern matches only the root.
+**/__pycache__/
+**/*.py[cod]
+**/*.egg-info/
+**/.pytest_cache/
+**/.ipynb_checkpoints/
 
 # Sample imagery, eval outputs, notebooks, docs: not needed to serve the API
 transcription/data/
 transcription/results/
+
+# ...except the files the runtime reads: the collector gazetteer for recordedBy
+# confidence, and the GBIF lookup cache.
+!transcription/data/gt-labels/collector_gt.txt
+!transcription/data/new-england-samples/output/collectors.txt
+!transcription/results/gbif_taxon_full.json
 nbs/
 docs/
 memory/
